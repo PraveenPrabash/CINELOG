@@ -1,7 +1,7 @@
 import { View, type ViewProps } from 'react-native';
 
-import { ThemeColor } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Colors, ThemeColor } from '../constants/theme';
+import { useCinelog } from '../context/CinelogContext';
 
 export type ThemedViewProps = ViewProps & {
   lightColor?: string;
@@ -10,7 +10,9 @@ export type ThemedViewProps = ViewProps & {
 };
 
 export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }: ThemedViewProps) {
-  const theme = useTheme();
+  const { theme } = useCinelog();
+  const currentTheme = theme === 'system' ? 'dark' : theme;
+  const colors = Colors[currentTheme];
 
-  return <View style={[{ backgroundColor: theme[type ?? 'background'] }, style]} {...otherProps} />;
+  return <View style={[{ backgroundColor: colors[type ?? 'background'] }, style]} {...otherProps} />;
 }

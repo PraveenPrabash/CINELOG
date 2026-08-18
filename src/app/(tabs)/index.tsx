@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useCinelog } from '../../context/CinelogContext';
 import { MediaCard } from '../../components/MediaCard';
 import { FilterBar } from '../../components/FilterBar';
+import { StatsCard } from '../../components/StatsCard';
 import { ThemedView } from '../../components/themed-view';
 import { ThemedText } from '../../components/themed-text';
 
@@ -23,6 +24,7 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <StatsCard collection={collection} />
       <FilterBar filters={FILTERS} activeFilter={activeFilter} onSelect={setActiveFilter} />
       
       {filteredCollection.length === 0 ? (

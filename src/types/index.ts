@@ -7,6 +7,7 @@ export interface BaseMedia {
   poster: string;
   type: MediaType;
   genres: string[];
+  runtime?: number; // in minutes
 }
 
 export interface WatchedItem extends BaseMedia {
