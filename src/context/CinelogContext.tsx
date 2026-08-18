@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BaseMedia, WatchedItem, WatchlistItem } from '../types';
+import { BaseMedia, WatchedItem, WatchlistItem, WatchedEpisode } from '../types';
+import { useAuth } from './AuthContext';
+import { mediaRepository } from '../services/firestore/mediaRepository';
+import { watchlistRepository } from '../services/firestore/watchlistRepository';
+import { episodeRepository } from '../services/firestore/episodeRepository';
 
 type ThemePreference = 'dark' | 'light' | 'system';
 
@@ -15,6 +20,7 @@ interface CinelogContextType {
   removeFromWatchlist: (id: string) => Promise<void>;
   setThemePreference: (theme: ThemePreference) => Promise<void>;
   isLoaded: boolean;
+  isLoadingCloudData: boolean;
 }
 
 const CinelogContext = createContext<CinelogContextType | undefined>(undefined);
@@ -28,41 +34,70 @@ export function useCinelog() {
 }
 
 export function CinelogProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  
   const [collection, setCollection] = useState<WatchedItem[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [theme, setTheme] = useState<ThemePreference>('dark');
+  
+  // isLoaded is for local theme init
   const [isLoaded, setIsLoaded] = useState(false);
+  // isLoadingCloudData is for the Firestore fetch
+  const [isLoadingCloudData, setIsLoadingCloudData] = useState(false);
 
   useEffect(() => {
-    loadData();
+    loadLocalTheme();
   }, []);
 
-  const loadData = async () => {
-    try {
-      const storedCollection = await AsyncStorage.getItem('@cinelog_collection');
-      const storedWatchlist = await AsyncStorage.getItem('@cinelog_watchlist');
-      const storedTheme = await AsyncStorage.getItem('@cinelog_theme');
+  useEffect(() => {
+    if (user) {
+      loadCloudData(user.uid);
+    } else {
+      setCollection([]);
+      setWatchlist([]);
+    }
+  }, [user]);
 
-      if (storedCollection) setCollection(JSON.parse(storedCollection));
-      if (storedWatchlist) setWatchlist(JSON.parse(storedWatchlist));
+  const loadLocalTheme = async () => {
+    try {
+      const storedTheme = await AsyncStorage.getItem('@cinelog_theme');
       if (storedTheme) setTheme(storedTheme as ThemePreference);
     } catch (e) {
-      console.error('Failed to load data', e);
+      console.error('Failed to load theme', e);
     } finally {
       setIsLoaded(true);
     }
   };
 
-  const saveData = async (key: string, data: any) => {
+  const loadCloudData = async (uid: string) => {
+    setIsLoadingCloudData(true);
     try {
-      await AsyncStorage.setItem(key, JSON.stringify(data));
-    } catch (e) {
-      console.error(`Failed to save ${key}`, e);
+      const [mediaDocs, watchlistDocs, episodeDocs] = await Promise.all([
+        mediaRepository.getAllMedia(uid),
+        watchlistRepository.getWatchlist(uid),
+        episodeRepository.getWatchedEpisodes(uid)
+      ]);
+
+      // Merge episodes back into media
+      const mediaWithEpisodes = mediaDocs.map(media => {
+        const episodesForMedia = episodeDocs.filter(ep => ep.mediaId === media.id.toString());
+        return {
+          ...media,
+          watchedEpisodes: episodesForMedia.length > 0 ? episodesForMedia : undefined
+        };
+      });
+
+      setCollection(calculateRanks(mediaWithEpisodes as WatchedItem[]));
+      setWatchlist(watchlistDocs as WatchlistItem[]);
+    } catch (error) {
+      console.error('Failed to load cloud data', error);
+      Alert.alert('Data Error', 'Failed to load your collection from the cloud.');
+    } finally {
+      setIsLoadingCloudData(false);
     }
   };
 
   const calculateRanks = (items: WatchedItem[]): WatchedItem[] => {
-    // Sort by rating descending, then by title ascending to keep it stable
     const sorted = [...items].sort((a, b) => {
       if (b.rating !== a.rating) {
         return b.rating - a.rating;
@@ -76,7 +111,12 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const addWatched = async (item: BaseMedia, rating: number, watchedEpisodes?: any[]) => {
+  const addWatched = async (item: BaseMedia, rating: number, watchedEpisodes?: WatchedEpisode[]) => {
+    if (!user) return;
+    
+    const previousCollection = [...collection];
+    const previousWatchlist = [...watchlist];
+
     const newItem: WatchedItem = {
       ...item,
       rating,
@@ -84,55 +124,132 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
       watchedEpisodes,
     };
     
-    let newWatchlist = watchlist;
+    let newWatchlist = [...watchlist];
     const totalEpisodes = item.seasons?.reduce((acc, s) => acc + s.episodeCount, 0) || 0;
     const isCompletedSeries = item.type === 'series' && watchedEpisodes && watchedEpisodes.length >= totalEpisodes && totalEpisodes > 0;
     
     if (item.type === 'movie' || isCompletedSeries) {
       newWatchlist = watchlist.filter(w => w.id !== item.id);
       setWatchlist(newWatchlist);
-      await saveData('@cinelog_watchlist', newWatchlist);
     }
 
     const newCollection = calculateRanks([...collection, newItem]);
     setCollection(newCollection);
-    await saveData('@cinelog_collection', newCollection);
+
+    try {
+      await mediaRepository.addMedia(user.uid, item, rating);
+      
+      // If there are watched episodes, save them to Firestore
+      if (watchedEpisodes && watchedEpisodes.length > 0) {
+        await Promise.all(
+          watchedEpisodes.map(ep => episodeRepository.markEpisodeWatched(user.uid, item.id.toString(), ep))
+        );
+      }
+
+      // If removed from watchlist, delete from Firestore
+      if (previousWatchlist.length !== newWatchlist.length) {
+        await watchlistRepository.removeFromWatchlist(user.uid, item.id.toString());
+      }
+    } catch (error) {
+      console.error('Firestore write failed', error);
+      setCollection(previousCollection);
+      setWatchlist(previousWatchlist);
+      Alert.alert('Error', 'Failed to save to cloud. Changes reverted.');
+    }
   };
 
   const updateWatched = async (id: string, updates: Partial<WatchedItem>) => {
+    if (!user) return;
+
+    const previousCollection = [...collection];
+    const previousWatchlist = [...watchlist];
+
     const updatedCollection = collection.map(item => 
       item.id === id ? { ...item, ...updates } : item
     );
     const rankedCollection = calculateRanks(updatedCollection);
     setCollection(rankedCollection);
-    await saveData('@cinelog_collection', rankedCollection);
     
-    // Auto-remove from watchlist if completed
+    let newWatchlist = [...watchlist];
     const updatedItem = updatedCollection.find(i => i.id === id);
     if (updatedItem && updatedItem.type === 'series' && updatedItem.watchedEpisodes) {
       const totalEpisodes = updatedItem.seasons?.reduce((acc, s) => acc + s.episodeCount, 0) || 0;
       if (updatedItem.watchedEpisodes.length >= totalEpisodes && totalEpisodes > 0) {
-        const newWatchlist = watchlist.filter(w => w.id !== id);
+        newWatchlist = watchlist.filter(w => w.id !== id);
         if (newWatchlist.length !== watchlist.length) {
           setWatchlist(newWatchlist);
-          await saveData('@cinelog_watchlist', newWatchlist);
         }
       }
+    }
+
+    try {
+      // Just re-save the entire media document using addMedia, which performs setDoc (upsert)
+      if (updatedItem) {
+        await mediaRepository.addMedia(user.uid, updatedItem as BaseMedia, updatedItem.rating);
+
+        // Diff the episodes and handle updates if watchedEpisodes changed
+        if (updates.watchedEpisodes) {
+          const oldItem = previousCollection.find(i => i.id === id);
+          const oldEpisodes = oldItem?.watchedEpisodes || [];
+          const newEpisodes = updates.watchedEpisodes;
+          
+          // Find added episodes
+          const addedEpisodes = newEpisodes.filter(nEp => 
+            !oldEpisodes.some(oEp => oEp.seasonNumber === nEp.seasonNumber && oEp.episodeNumber === nEp.episodeNumber)
+          );
+          
+          // Find removed episodes
+          const removedEpisodes = oldEpisodes.filter(oEp => 
+            !newEpisodes.some(nEp => nEp.seasonNumber === oEp.seasonNumber && nEp.episodeNumber === oEp.episodeNumber)
+          );
+
+          await Promise.all([
+            ...addedEpisodes.map(ep => episodeRepository.markEpisodeWatched(user.uid, id, ep)),
+            ...removedEpisodes.map(ep => episodeRepository.unmarkEpisodeWatched(user.uid, id, ep.seasonNumber, ep.episodeNumber))
+          ]);
+        }
+
+        if (previousWatchlist.length !== newWatchlist.length) {
+          await watchlistRepository.removeFromWatchlist(user.uid, id);
+        }
+      }
+    } catch (error) {
+      console.error('Firestore update failed', error);
+      setCollection(previousCollection);
+      setWatchlist(previousWatchlist);
+      Alert.alert('Error', 'Failed to update in cloud. Changes reverted.');
     }
   };
 
   const removeWatched = async (id: string) => {
+    if (!user) return;
+    const previousCollection = [...collection];
     const newCollection = calculateRanks(collection.filter(item => item.id !== id));
     setCollection(newCollection);
-    await saveData('@cinelog_collection', newCollection);
+
+    try {
+      await mediaRepository.removeMedia(user.uid, id);
+      
+      // Also clean up all episodes for this media
+      const oldItem = previousCollection.find(i => i.id === id);
+      if (oldItem && oldItem.watchedEpisodes) {
+        await Promise.all(oldItem.watchedEpisodes.map(ep => 
+          episodeRepository.unmarkEpisodeWatched(user.uid, id, ep.seasonNumber, ep.episodeNumber)
+        ));
+      }
+    } catch (error) {
+      console.error('Firestore delete failed', error);
+      setCollection(previousCollection);
+      Alert.alert('Error', 'Failed to remove from cloud. Changes reverted.');
+    }
   };
 
   const addToWatchlist = async (item: BaseMedia) => {
-    // Check if already in collection
+    if (!user) return;
     if (collection.find(c => c.id === item.id)) return;
-    // Check if already in watchlist
     if (watchlist.find(w => w.id === item.id)) return;
 
+    const previousWatchlist = [...watchlist];
     const newItem: WatchlistItem = {
       ...item,
       dateAdded: Date.now(),
@@ -140,13 +257,29 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
 
     const newWatchlist = [newItem, ...watchlist];
     setWatchlist(newWatchlist);
-    await saveData('@cinelog_watchlist', newWatchlist);
+
+    try {
+      await watchlistRepository.addToWatchlist(user.uid, item);
+    } catch (error) {
+      console.error('Firestore write failed', error);
+      setWatchlist(previousWatchlist);
+      Alert.alert('Error', 'Failed to add to Watchlist. Changes reverted.');
+    }
   };
 
   const removeFromWatchlist = async (id: string) => {
+    if (!user) return;
+    const previousWatchlist = [...watchlist];
     const newWatchlist = watchlist.filter(item => item.id !== id);
     setWatchlist(newWatchlist);
-    await saveData('@cinelog_watchlist', newWatchlist);
+
+    try {
+      await watchlistRepository.removeFromWatchlist(user.uid, id);
+    } catch (error) {
+      console.error('Firestore delete failed', error);
+      setWatchlist(previousWatchlist);
+      Alert.alert('Error', 'Failed to remove from Watchlist. Changes reverted.');
+    }
   };
 
   const setThemePreference = async (newTheme: ThemePreference) => {
@@ -169,7 +302,8 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
       addToWatchlist,
       removeFromWatchlist,
       setThemePreference,
-      isLoaded
+      isLoaded,
+      isLoadingCloudData
     }}>
       {children}
     </CinelogContext.Provider>
