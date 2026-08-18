@@ -16,10 +16,6 @@ export function StatsCard({ collection }: StatsCardProps) {
   const colors = Colors[currentTheme];
 
   const totalWatched = collection.length;
-  
-  const averageRating = totalWatched > 0 
-    ? (collection.reduce((sum, item) => sum + item.rating, 0) / totalWatched).toFixed(1)
-    : '0.0';
 
   const totalRuntimeMins = collection.reduce((sum, item) => sum + (item.runtime || 0), 0);
   const runtimeHours = Math.floor(totalRuntimeMins / 60);
@@ -44,7 +40,6 @@ export function StatsCard({ collection }: StatsCardProps) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.backgroundSelected }]}>
-      {/* Decorative top accent */}
       <View style={[styles.topAccent, { backgroundColor: colors.primary }]} />
 
       <View style={styles.header}>
@@ -56,7 +51,6 @@ export function StatsCard({ collection }: StatsCardProps) {
       </View>
 
       <View style={styles.content}>
-        {/* Main Hero Stats */}
         <View style={styles.heroSection}>
           <View style={styles.heroBox}>
             <View style={[styles.iconCircle, { backgroundColor: 'rgba(236, 179, 101, 0.15)' }]}>
@@ -65,18 +59,6 @@ export function StatsCard({ collection }: StatsCardProps) {
             <View style={styles.heroTextContent}>
               <ThemedText style={[styles.statValueLarge, { color: colors.text }]}>{totalWatched}</ThemedText>
               <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Logged</ThemedText>
-            </View>
-          </View>
-          
-          <View style={[styles.verticalDivider, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
-          
-          <View style={styles.heroBox}>
-            <View style={[styles.iconCircle, { backgroundColor: 'rgba(236, 179, 101, 0.15)' }]}>
-              <Ionicons name="star" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.heroTextContent}>
-              <ThemedText style={[styles.statValueLarge, { color: colors.primary }]}>{averageRating}</ThemedText>
-              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Avg Rating</ThemedText>
             </View>
           </View>
         </View>

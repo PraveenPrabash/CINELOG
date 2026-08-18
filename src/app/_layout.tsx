@@ -23,6 +23,7 @@ function RootLayoutNav() {
     <ThemeProvider value={theme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="search" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="edit" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
