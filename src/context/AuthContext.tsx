@@ -7,11 +7,10 @@ import {
   signInWithCredential
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
-import { GoogleSignin, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-});
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextType {
   user: User | null;
@@ -26,6 +25,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
@@ -35,39 +38,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      const credential = GoogleAuthProvider.credential(id_token);
+      signInWithCredential(auth, credential).catch(err => {
+        console.error('Firebase signin error', err);
+      });
+    }
+  }, [response]);
+
   const loginWithGoogle = async () => {
     try {
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      const idToken = response.data?.idToken;
-      
-      if (!idToken) {
-        throw new Error('No ID token found');
-      }
-
-      const credential = GoogleAuthProvider.credential(idToken);
-      await signInWithCredential(auth, credential);
+      await promptAsync();
     } catch (error: any) {
-      if (isErrorWithCode(error)) {
-        if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-          return;
-        } else if (error.code === statusCodes.IN_PROGRESS) {
-          return;
-        } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-          throw new Error('Play services not available or outdated');
-        }
-      }
       throw error;
     }
   };
 
   const logout = async () => {
     await signOut(auth);
-    try {
-      await GoogleSignin.signOut();
-    } catch (error) {
-      console.log('Google sign out error', error);
-    }
   };
 
   return (
