@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Dimensions } from 'react-native';
 import { ThemedText } from './themed-text';
 import { WatchedItem } from '../types';
 import { useCinelog } from '../context/CinelogContext';
@@ -24,7 +24,7 @@ export function StatsCard({ collection }: StatsCardProps) {
   const totalRuntimeMins = collection.reduce((sum, item) => sum + (item.runtime || 0), 0);
   const runtimeHours = Math.floor(totalRuntimeMins / 60);
   const runtimeMins = totalRuntimeMins % 60;
-  const watchTimeStr = totalRuntimeMins > 0 ? `${runtimeHours}h ${runtimeMins}m` : '0h 0m';
+  const watchTimeStr = totalRuntimeMins > 0 ? `${runtimeHours}h ${runtimeMins}m` : '0h';
 
   const totalMovies = collection.filter(item => item.type === 'movie').length;
   const totalSeries = collection.filter(item => item.type === 'series').length;
@@ -43,75 +43,67 @@ export function StatsCard({ collection }: StatsCardProps) {
   if (totalWatched === 0) return null;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.backgroundElement }]}>
-      {/* Top Left Gold Glow Effect Fake Line */}
-      <View style={[styles.goldLine, { backgroundColor: colors.primary }]} />
-      <View style={[styles.goldDot, { backgroundColor: colors.primary }]} />
-      
-      <View style={styles.headerRow}>
-        <ThemedText style={styles.title}>MY COLLECTION</ThemedText>
-        <TouchableOpacity style={[styles.insightsPill, { backgroundColor: colors.backgroundElement }]}>
-          <Ionicons name="bar-chart" size={12} color={colors.textSecondary} />
-          <ThemedText style={[styles.insightsText, { color: colors.textSecondary }]}>View Insights {'>'}</ThemedText>
+    <View style={[styles.container, { backgroundColor: colors.backgroundSelected }]}>
+      {/* Decorative top accent */}
+      <View style={[styles.topAccent, { backgroundColor: colors.primary }]} />
+
+      <View style={styles.header}>
+        <ThemedText style={styles.title}>My Collection</ThemedText>
+        <TouchableOpacity style={[styles.insightsPill, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
+          <MaterialCommunityIcons name="chart-box-outline" size={14} color={colors.primary} />
+          <ThemedText style={[styles.insightsText, { color: colors.primary }]}>Insights</ThemedText>
         </TouchableOpacity>
       </View>
-      
-      <View style={styles.grid}>
-        {/* ROW 1 */}
-        <View style={styles.row}>
-          <View style={styles.statBox}>
-            <MaterialCommunityIcons name="movie-open-outline" size={24} color={colors.primary} />
-            <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Watched</ThemedText>
-            <ThemedText style={[styles.statValue, { color: colors.text }]}>{totalWatched}</ThemedText>
+
+      <View style={styles.content}>
+        {/* Main Hero Stats */}
+        <View style={styles.heroSection}>
+          <View style={styles.heroBox}>
+            <View style={[styles.iconCircle, { backgroundColor: 'rgba(236, 179, 101, 0.15)' }]}>
+              <MaterialCommunityIcons name="movie-open" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.heroTextContent}>
+              <ThemedText style={[styles.statValueLarge, { color: colors.text }]}>{totalWatched}</ThemedText>
+              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Total Logged</ThemedText>
+            </View>
           </View>
-
+          
           <View style={[styles.verticalDivider, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
-
-          <View style={styles.statBox}>
-            <Ionicons name="star" size={24} color={colors.primary} />
-            <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Average Rating</ThemedText>
-            <ThemedText style={[styles.statValue, { color: colors.primary }]}>{averageRating}</ThemedText>
-          </View>
-
-          <View style={[styles.verticalDivider, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
-
-          <View style={styles.statBox}>
-            <Ionicons name="time-outline" size={24} color={colors.primary} />
-            <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Watch Time</ThemedText>
-            <ThemedText style={[styles.statValue, { color: colors.text }]}>{watchTimeStr}</ThemedText>
-            <ThemedText style={[styles.statSubLabel, { color: colors.textSecondary }]}>Hours</ThemedText>
+          
+          <View style={styles.heroBox}>
+            <View style={[styles.iconCircle, { backgroundColor: 'rgba(236, 179, 101, 0.15)' }]}>
+              <Ionicons name="star" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.heroTextContent}>
+              <ThemedText style={[styles.statValueLarge, { color: colors.primary }]}>{averageRating}</ThemedText>
+              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Avg Rating</ThemedText>
+            </View>
           </View>
         </View>
 
         <View style={[styles.horizontalDivider, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
 
-        {/* ROW 2 */}
-        <View style={styles.row}>
-          <View style={styles.statBox}>
-            <Ionicons name="film-outline" size={24} color={colors.primary} />
-            <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Movies</ThemedText>
-            <ThemedText style={[styles.statValue, { color: colors.text }]}>{totalMovies}</ThemedText>
+        {/* Secondary Stats Row */}
+        <View style={styles.secondarySection}>
+          <View style={styles.secondaryBox}>
+            <Ionicons name="time-outline" size={16} color={colors.textSecondary} style={styles.secondaryIcon} />
+            <ThemedText style={[styles.secondaryValue, { color: colors.text }]}>{watchTimeStr}</ThemedText>
           </View>
-
-          <View style={[styles.verticalDivider, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
-
-          <View style={styles.statBox}>
-            <Ionicons name="tv-outline" size={24} color={colors.primary} />
-            <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>TV Series</ThemedText>
-            <ThemedText style={[styles.statValue, { color: colors.text }]}>{totalSeries}</ThemedText>
+          <View style={styles.secondaryBox}>
+            <Ionicons name="film-outline" size={16} color={colors.textSecondary} style={styles.secondaryIcon} />
+            <ThemedText style={[styles.secondaryValue, { color: colors.text }]}>{totalMovies}</ThemedText>
           </View>
-
-          <View style={[styles.verticalDivider, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
-
-          <View style={styles.statBox}>
-            <Ionicons name="trophy-outline" size={24} color={colors.primary} />
-            <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Top Genre</ThemedText>
-            <ThemedText style={[styles.statValue, { color: colors.text }]} numberOfLines={1}>
+          <View style={styles.secondaryBox}>
+            <Ionicons name="tv-outline" size={16} color={colors.textSecondary} style={styles.secondaryIcon} />
+            <ThemedText style={[styles.secondaryValue, { color: colors.text }]}>{totalSeries}</ThemedText>
+          </View>
+          <View style={styles.secondaryBox}>
+            <Ionicons name="trophy-outline" size={16} color={colors.textSecondary} style={styles.secondaryIcon} />
+            <ThemedText style={[styles.secondaryValue, { color: colors.text }]} numberOfLines={1}>
               {topGenre}
             </ThemedText>
           </View>
         </View>
-
       </View>
     </View>
   );
@@ -120,86 +112,118 @@ export function StatsCard({ collection }: StatsCardProps) {
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
+    marginBottom: 20,
     borderRadius: 16,
-    borderWidth: 1,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
-  goldLine: {
-    position: 'absolute',
-    top: -1,
-    left: 20,
-    width: 60,
-    height: 2,
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
+  topAccent: {
+    height: 3,
+    width: '100%',
   },
-  goldDot: {
-    position: 'absolute',
-    top: -2,
-    left: 20,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  headerRow: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   title: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
   insightsPill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
+    borderRadius: 20,
+    gap: 6,
   },
   insightsText: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
-  grid: {
-    gap: 16,
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  row: {
+  heroSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 8,
   },
-  statBox: {
+  heroBox: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 4,
+    gap: 12,
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroTextContent: {
+    justifyContent: 'center',
+  },
+  statValueLarge: {
+    fontSize: 26,
+    fontWeight: '900',
+    lineHeight: 30,
+    letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 11,
-    marginTop: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginTop: 2,
-  },
-  statSubLabel: {
-    fontSize: 10,
-    marginTop: -4,
   },
   verticalDivider: {
     width: 1,
-    height: 50,
+    height: 40,
+    marginHorizontal: 16,
   },
   horizontalDivider: {
     height: 1,
     width: '100%',
-    marginVertical: 4,
+    marginBottom: 16,
+  },
+  secondarySection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  secondaryBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  secondaryIcon: {
+    opacity: 0.8,
+  },
+  secondaryValue: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
