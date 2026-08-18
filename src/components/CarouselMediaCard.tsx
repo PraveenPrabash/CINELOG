@@ -32,6 +32,10 @@ export function CarouselMediaCard({ item, onPress, variant = 'home' }: CarouselM
           {item.year} • {item.type === 'movie' ? 'Movie' : 'Series'}
         </ThemedText>
 
+        <ThemedText style={[styles.metaText, { color: colors.textSecondary, marginBottom: 6 }]} numberOfLines={1}>
+          {item.genres.slice(0, 2).join(' • ')}
+        </ThemedText>
+
         {isWatched && variant === 'home' && (
           <View style={styles.footer}>
             <View style={styles.ratingContainer}>
@@ -77,7 +81,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 11,
-    marginBottom: 6,
+    marginBottom: 2,
   },
   footer: {
     flexDirection: 'row',
