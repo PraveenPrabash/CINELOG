@@ -67,8 +67,8 @@ export default function CollectionScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>My Collection</ThemedText>
+      <View style={styles.controlsHeader}>
+        <FilterBar filters={FILTERS} activeFilter={activeFilter} onSelect={setActiveFilter} />
         <TouchableOpacity 
           style={styles.sortToggle} 
           onPress={() => setSortMode(sortMode === 'ranked' ? 'az' : 'ranked')}
@@ -79,8 +79,6 @@ export default function CollectionScreen() {
           </ThemedText>
         </TouchableOpacity>
       </View>
-
-      <FilterBar filters={FILTERS} activeFilter={activeFilter} onSelect={setActiveFilter} />
       
       {filteredCollection.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -150,18 +148,14 @@ export default function CollectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
   },
-  header: {
+  controlsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    paddingRight: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   sortToggle: {
     flexDirection: 'row',
@@ -182,8 +176,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
+    padding: 16,
+    paddingTop: 24,
+    paddingBottom: 40,
   },
   sectionHeader: {
     paddingVertical: 8,

@@ -1,11 +1,13 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
 import { useCinelog } from '../../context/CinelogContext';
+import { View, Text, TouchableOpacity } from 'react-native';
 
 export default function TabLayout() {
   const { theme } = useCinelog();
   const colors = Colors[theme === 'system' ? 'dark' : theme];
+  const router = useRouter();
 
   return (
     <Tabs
@@ -18,7 +20,28 @@ export default function TabLayout() {
         },
         headerStyle: {
           backgroundColor: colors.background,
+          elevation: 0, // Android shadow
+          shadowOpacity: 0, // iOS shadow
+          borderBottomWidth: 1,
+          borderBottomColor: colors.backgroundElement,
+          height: 110, // Increase height to fit custom two-line title
         },
+        headerTitleAlign: 'left',
+        headerTitle: (props) => (
+          <View style={{ justifyContent: 'center', height: '100%', paddingBottom: 8 }}>
+            <Text style={{ fontSize: 12, fontWeight: '900', color: colors.primary, letterSpacing: 2, marginBottom: 4 }}>
+              CINELOG
+            </Text>
+            <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.text }}>
+              {props.children}
+            </Text>
+          </View>
+        ),
+        headerRight: () => (
+          <TouchableOpacity onPress={() => router.push('/search')} style={{ marginRight: 16 }}>
+            <Ionicons name="search" size={24} color={colors.text} />
+          </TouchableOpacity>
+        ),
         headerTintColor: colors.text,
       }}>
       <Tabs.Screen
@@ -46,6 +69,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
+          headerRight: () => null,
           tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} />,
         }}
       />

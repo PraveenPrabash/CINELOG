@@ -33,7 +33,7 @@ export default function WatchlistScreen() {
         <FlatList
           data={filteredWatchlist}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
             <MediaCard 
               item={item} 
@@ -55,11 +55,11 @@ export default function WatchlistScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 16,
   },
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
+  listContent: {
+    padding: 16,
+    paddingTop: 24,
+    paddingBottom: 40,
   },
   emptyContainer: {
     flex: 1,

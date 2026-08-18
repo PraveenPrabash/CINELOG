@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Image, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCinelog } from '../context/CinelogContext';
 import { ThemedView } from '../components/themed-view';
@@ -13,7 +13,7 @@ import { tmdb } from '../services/tmdb';
 export default function EditScreen() {
   const { id, isNew } = useLocalSearchParams<{ id: string; isNew?: string }>();
   const router = useRouter();
-  const { collection, watchlist, addWatched, updateWatched, removeWatched, addToWatchlist, theme } = useCinelog();
+  const { collection, watchlist, addWatched, updateWatched, removeWatched, addToWatchlist, removeFromWatchlist, theme } = useCinelog();
   const colors = Colors[theme === 'system' ? 'dark' : theme];
 
   const existingCollectionItem = collection.find(c => c.id === id);
@@ -107,6 +107,24 @@ export default function EditScreen() {
     router.back();
   };
 
+  const handleRemoveFromWatchlist = () => {
+    Alert.alert(
+      "Remove from Watchlist",
+      "Are you sure you want to remove this from your watchlist?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Remove", 
+          style: "destructive",
+          onPress: async () => {
+            await removeFromWatchlist(id);
+            if (!existingCollectionItem) router.back();
+          }
+        }
+      ]
+    );
+  };
+
   const formatRuntime = (mins?: number) => {
     if (!mins) return '';
     const h = Math.floor(mins / 60);
@@ -116,6 +134,23 @@ export default function EditScreen() {
 
   const totalEpisodes = mediaBase.seasons?.reduce((acc, s) => acc + s.episodeCount, 0) || 0;
   const totalSeasons = mediaBase.seasons?.length || 0;
+
+  const toggleSeasonEpisodes = (seasonNumber: number, episodes: any[], isSelectAll: boolean) => {
+    if (isSelectAll) {
+      const newEpisodes = episodes.map(ep => ({
+        episodeId: `s${seasonNumber}e${ep.episode_number}`,
+        seasonNumber,
+        episodeNumber: ep.episode_number,
+        runtime: ep.runtime || null,
+      }));
+      setWatchedEpisodes(prev => {
+        const filtered = prev.filter(we => we.seasonNumber !== seasonNumber);
+        return [...filtered, ...newEpisodes];
+      });
+    } else {
+      setWatchedEpisodes(prev => prev.filter(we => we.seasonNumber !== seasonNumber));
+    }
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -164,14 +199,26 @@ export default function EditScreen() {
           </View>
         ) : null}
 
-        {!isWatched && (
+        {existingWatchlistItem && (
+          <TouchableOpacity 
+            style={[styles.watchlistBtn, { backgroundColor: colors.card, borderColor: colors.backgroundElement, borderWidth: 1 }]} 
+            onPress={handleRemoveFromWatchlist}
+          >
+            <Ionicons name="trash-outline" size={20} color="#ff3b30" />
+            <ThemedText style={[styles.watchlistBtnText, { color: '#ff3b30' }]}>
+              Remove from Watchlist
+            </ThemedText>
+          </TouchableOpacity>
+        )}
+        
+        {!isWatched && !existingWatchlistItem && (
           <TouchableOpacity 
             style={[styles.watchlistBtn, { backgroundColor: colors.card, borderColor: colors.backgroundElement, borderWidth: 1 }]} 
             onPress={handleAddWatchlist}
           >
-            <Ionicons name={existingWatchlistItem ? "bookmark" : "bookmark-outline"} size={20} color={colors.text} />
+            <Ionicons name="bookmark-outline" size={20} color={colors.text} />
             <ThemedText style={styles.watchlistBtnText}>
-              {existingWatchlistItem ? "In Watchlist" : "Add to Watchlist"}
+              Add to Watchlist
             </ThemedText>
           </TouchableOpacity>
         )}
@@ -184,6 +231,7 @@ export default function EditScreen() {
               const isExpanded = expandedSeason === season.seasonNumber;
               const episodes = seasonEpisodes[season.seasonNumber] || [];
               const watchedInSeason = watchedEpisodes.filter(we => we.seasonNumber === season.seasonNumber).length;
+              const isAllSelected = episodes.length > 0 && watchedInSeason === episodes.length;
               
               return (
                 <View key={season.seasonNumber} style={[styles.seasonCard, { backgroundColor: colors.card }]}>
@@ -205,33 +253,45 @@ export default function EditScreen() {
                       {isLoadingSeason ? (
                         <ActivityIndicator size="small" color={colors.primary} style={{ margin: 16 }} />
                       ) : (
-                        episodes.map(ep => {
-                          const epId = `s${season.seasonNumber}e${ep.episode_number}`;
-                          const isEpWatched = watchedEpisodes.some(we => we.episodeId === epId);
-                          return (
+                        <>
+                          {episodes.length > 0 && (
                             <TouchableOpacity 
-                              key={epId} 
-                              style={[styles.episodeRow, { borderTopColor: colors.backgroundElement }]}
-                              onPress={() => toggleEpisode(season.seasonNumber, ep)}
+                              style={styles.selectAllBtn}
+                              onPress={() => toggleSeasonEpisodes(season.seasonNumber, episodes, !isAllSelected)}
                             >
-                              <Ionicons 
-                                name={isEpWatched ? "checkbox" : "square-outline"} 
-                                size={20} 
-                                color={isEpWatched ? colors.primary : colors.textSecondary} 
-                              />
-                              <View style={styles.episodeInfo}>
-                                <ThemedText style={styles.episodeTitle} numberOfLines={1}>
-                                  S{season.seasonNumber}E{ep.episode_number}   {ep.name}
-                                </ThemedText>
-                                {ep.runtime ? (
-                                  <ThemedText style={[styles.episodeRuntime, { color: colors.textSecondary }]}>
-                                    {ep.runtime}m
-                                  </ThemedText>
-                                ) : null}
-                              </View>
+                              <ThemedText style={[styles.selectAllText, { color: colors.primary }]}>
+                                {isAllSelected ? "Deselect All" : "Select All"}
+                              </ThemedText>
                             </TouchableOpacity>
-                          );
-                        })
+                          )}
+                          {episodes.map(ep => {
+                            const epId = `s${season.seasonNumber}e${ep.episode_number}`;
+                            const isEpWatched = watchedEpisodes.some(we => we.episodeId === epId);
+                            return (
+                              <TouchableOpacity 
+                                key={epId} 
+                                style={[styles.episodeRow, { borderTopColor: colors.backgroundElement }]}
+                                onPress={() => toggleEpisode(season.seasonNumber, ep)}
+                              >
+                                <Ionicons 
+                                  name={isEpWatched ? "checkbox" : "square-outline"} 
+                                  size={20} 
+                                  color={isEpWatched ? colors.primary : colors.textSecondary} 
+                                />
+                                <View style={styles.episodeInfo}>
+                                  <ThemedText style={styles.episodeTitle} numberOfLines={1}>
+                                    S{season.seasonNumber}E{ep.episode_number}   {ep.name}
+                                  </ThemedText>
+                                  {ep.runtime ? (
+                                    <ThemedText style={[styles.episodeRuntime, { color: colors.textSecondary }]}>
+                                      {ep.runtime}m
+                                    </ThemedText>
+                                  ) : null}
+                                </View>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </>
                       )}
                     </View>
                   )}
@@ -386,6 +446,15 @@ const styles = StyleSheet.create({
   episodesList: {
     paddingHorizontal: 12,
     paddingBottom: 8,
+  },
+  selectAllBtn: {
+    paddingVertical: 8,
+    marginBottom: 4,
+    alignItems: 'flex-end',
+  },
+  selectAllText: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   episodeRow: {
     flexDirection: 'row',

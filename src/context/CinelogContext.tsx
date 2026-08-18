@@ -84,10 +84,11 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
       watchedEpisodes,
     };
     
-    // If it's a movie, remove it from watchlist automatically.
-    // TV Series remain in Watchlist until manually removed or fully watched.
     let newWatchlist = watchlist;
-    if (item.type === 'movie') {
+    const totalEpisodes = item.seasons?.reduce((acc, s) => acc + s.episodeCount, 0) || 0;
+    const isCompletedSeries = item.type === 'series' && watchedEpisodes && watchedEpisodes.length >= totalEpisodes && totalEpisodes > 0;
+    
+    if (item.type === 'movie' || isCompletedSeries) {
       newWatchlist = watchlist.filter(w => w.id !== item.id);
       setWatchlist(newWatchlist);
       await saveData('@cinelog_watchlist', newWatchlist);
@@ -105,6 +106,19 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
     const rankedCollection = calculateRanks(updatedCollection);
     setCollection(rankedCollection);
     await saveData('@cinelog_collection', rankedCollection);
+    
+    // Auto-remove from watchlist if completed
+    const updatedItem = updatedCollection.find(i => i.id === id);
+    if (updatedItem && updatedItem.type === 'series' && updatedItem.watchedEpisodes) {
+      const totalEpisodes = updatedItem.seasons?.reduce((acc, s) => acc + s.episodeCount, 0) || 0;
+      if (updatedItem.watchedEpisodes.length >= totalEpisodes && totalEpisodes > 0) {
+        const newWatchlist = watchlist.filter(w => w.id !== id);
+        if (newWatchlist.length !== watchlist.length) {
+          setWatchlist(newWatchlist);
+          await saveData('@cinelog_watchlist', newWatchlist);
+        }
+      }
+    }
   };
 
   const removeWatched = async (id: string) => {
