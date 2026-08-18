@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { useCinelog } from '../../context/CinelogContext';
+import { useAuth } from '../../context/AuthContext';
 import { ThemedView } from '../../components/themed-view';
 import { ThemedText } from '../../components/themed-text';
 import { Colors } from '../../constants/theme';
@@ -8,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
   const { theme, setThemePreference } = useCinelog();
+  const { user, logout } = useAuth();
   const currentTheme = theme === 'system' ? 'dark' : theme;
   const colors = Colors[currentTheme];
 
@@ -16,8 +18,34 @@ export default function SettingsScreen() {
     { id: 'light', label: 'Light Theme', icon: 'sunny' }
   ] as const;
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error: any) {
+      Alert.alert('Logout Error', error.message);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
+      <View style={styles.section}>
+        <ThemedText style={styles.sectionTitle}>Account</ThemedText>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.backgroundElement }]}>
+            <View style={styles.rowLeft}>
+              <Ionicons name="person-circle" size={20} color={colors.text} style={styles.icon} />
+              <ThemedText>{user?.email || 'Logged in'}</ThemedText>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.row} onPress={handleLogout}>
+            <View style={styles.rowLeft}>
+              <Ionicons name="log-out" size={20} color={colors.primary} style={styles.icon} />
+              <ThemedText style={{ color: colors.primary, fontWeight: 'bold' }}>Log Out</ThemedText>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={styles.section}>
         <ThemedText style={styles.sectionTitle}>Appearance</ThemedText>
         <View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -47,7 +75,7 @@ export default function SettingsScreen() {
         <View style={[styles.card, { backgroundColor: colors.card, padding: 16 }]}>
           <ThemedText style={styles.aboutTitle}>CINELOG</ThemedText>
           <ThemedText style={[styles.aboutText, { color: colors.textSecondary }]}>
-            Your personal movie and TV series tracker. All data is stored locally on your device.
+            Your personal movie and TV series tracker.
           </ThemedText>
           <View style={[styles.tmdbAttribution, { borderTopColor: colors.backgroundElement }]}>
             <ThemedText style={[styles.tmdbText, { color: colors.textSecondary }]}>
