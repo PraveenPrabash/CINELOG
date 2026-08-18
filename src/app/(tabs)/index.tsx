@@ -1,16 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StyleSheet, FlatList, View, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCinelog } from '../../context/CinelogContext';
-import { MediaCard } from '../../components/MediaCard';
-import { FilterBar } from '../../components/FilterBar';
+import { CarouselMediaCard } from '../../components/CarouselMediaCard';
 import { StatsCard } from '../../components/StatsCard';
 import { ThemedView } from '../../components/themed-view';
 import { ThemedText } from '../../components/themed-text';
 import { Colors } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-
-const FILTERS = ['All', 'Movies', 'TV Series', 'Action', 'Sci-Fi', 'Drama', 'Comedy', 'Adventure', 'Mystery'];
 
 export default function HomeScreen() {
   const { collection, watchlist, theme } = useCinelog();
@@ -33,11 +30,6 @@ export default function HomeScreen() {
         renderItem={() => (
           <View style={styles.dashboardContent}>
             
-            {/* Header */}
-            <View style={styles.header}>
-              <ThemedText style={styles.headerTitle}>CINELOG</ThemedText>
-            </View>
-
             {/* Collection Statistics */}
             <StatsCard collection={collection} />
 
@@ -63,11 +55,10 @@ export default function HomeScreen() {
                   data={watchlist.slice(0, 5)}
                   horizontal
                   showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalListContent}
                   keyExtractor={item => item.id}
                   renderItem={({ item }) => (
-                    <TouchableOpacity onPress={() => router.push('/watchlist')} style={styles.previewCard}>
-                      <MediaCard item={item} onPress={() => {}} variant="watchlist" />
-                    </TouchableOpacity>
+                    <CarouselMediaCard item={item} onPress={() => router.push('/watchlist')} variant="watchlist" />
                   )}
                 />
               ) : (
@@ -85,11 +76,10 @@ export default function HomeScreen() {
                   data={topRated}
                   horizontal
                   showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalListContent}
                   keyExtractor={item => item.id}
                   renderItem={({ item }) => (
-                    <TouchableOpacity onPress={() => router.push({ pathname: '/edit', params: { id: item.id } })} style={styles.previewCard}>
-                      <MediaCard item={item} onPress={() => {}} variant="home" />
-                    </TouchableOpacity>
+                    <CarouselMediaCard item={item} onPress={() => router.push({ pathname: '/edit', params: { id: item.id } })} variant="home" />
                   )}
                 />
               ) : (
@@ -107,11 +97,10 @@ export default function HomeScreen() {
                   data={recentlyAdded}
                   horizontal
                   showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalListContent}
                   keyExtractor={item => item.id}
                   renderItem={({ item }) => (
-                    <TouchableOpacity onPress={() => router.push({ pathname: '/edit', params: { id: item.id } })} style={styles.previewCard}>
-                      <MediaCard item={item} onPress={() => {}} variant="home" />
-                    </TouchableOpacity>
+                    <CarouselMediaCard item={item} onPress={() => router.push({ pathname: '/edit', params: { id: item.id } })} variant="home" />
                   )}
                 />
               ) : (
@@ -153,20 +142,10 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
+    paddingTop: 16,
   },
   dashboardContent: {
     paddingBottom: 40,
-  },
-  header: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: 1,
-    color: '#ECB365', // Gold identity
   },
   addButton: {
     flexDirection: 'row',
@@ -208,9 +187,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  previewCard: {
-    width: 140, // fix width for horizontal scroll
-    marginLeft: 16,
+  horizontalListContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 4, // Allow room for shadow rendering
   },
   emptyPreview: {
     paddingHorizontal: 16,
