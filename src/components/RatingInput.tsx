@@ -84,30 +84,36 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 16,
+    paddingHorizontal: 8,
   },
   label: {
     fontSize: 14,
     fontWeight: 'bold',
     letterSpacing: 2,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   valueContainer: {
-    marginBottom: 24,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   valueText: {
-    fontSize: 56,
+    fontSize: 64,
+    lineHeight: 72,
     fontWeight: '900',
     fontVariant: ['tabular-nums'],
+    includeFontPadding: false,
   },
   sliderContainer: {
     width: '100%',
-    height: 40,
+    height: 48,
     justifyContent: 'center',
   },
   track: {
-    height: 8,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   fill: {
@@ -115,25 +121,26 @@ const styles = StyleSheet.create({
   },
   thumb: {
     position: 'absolute',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 3,
-    marginLeft: -12, // center thumb over value
+    marginLeft: -14, // center thumb over value
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 3,
+    shadowRadius: 4,
   },
   scaleLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    marginTop: 8,
+    marginTop: 4,
+    paddingBottom: 8,
   },
   scaleText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
 });

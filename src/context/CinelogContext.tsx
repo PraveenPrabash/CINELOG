@@ -84,10 +84,14 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
       watchedEpisodes,
     };
     
-    // If it's in watchlist, remove it
-    const newWatchlist = watchlist.filter(w => w.id !== item.id);
-    setWatchlist(newWatchlist);
-    await saveData('@cinelog_watchlist', newWatchlist);
+    // If it's a movie, remove it from watchlist automatically.
+    // TV Series remain in Watchlist until manually removed or fully watched.
+    let newWatchlist = watchlist;
+    if (item.type === 'movie') {
+      newWatchlist = watchlist.filter(w => w.id !== item.id);
+      setWatchlist(newWatchlist);
+      await saveData('@cinelog_watchlist', newWatchlist);
+    }
 
     const newCollection = calculateRanks([...collection, newItem]);
     setCollection(newCollection);

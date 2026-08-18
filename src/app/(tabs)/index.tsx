@@ -78,23 +78,44 @@ export default function HomeScreen() {
         {/* STATS DASHBOARD */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>My Collection</ThemedText>
-          <View style={[styles.statsGrid, { backgroundColor: colors.card }]}>
-            <View style={styles.statBox}>
-              <ThemedText style={[styles.statValue, { color: colors.primary }]}>{collection.length}</ThemedText>
-              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Watched</ThemedText>
+          <View style={[styles.statsGrid, { backgroundColor: colors.card, borderColor: colors.backgroundElement, borderWidth: 1 }]}>
+            <View style={styles.statRow}>
+              <View style={styles.statCompactBox}>
+                <ThemedText style={styles.statIcon}>🎬</ThemedText>
+                <View>
+                  <ThemedText style={[styles.statValue, { color: colors.primary }]}>{collection.length}</ThemedText>
+                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Watched</ThemedText>
+                </View>
+              </View>
+              <View style={styles.statCompactBox}>
+                <ThemedText style={styles.statIcon}>⏱</ThemedText>
+                <View>
+                  <ThemedText style={[styles.statValue, { color: colors.primary }]}>{hoursWatched}h</ThemedText>
+                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Watch Time</ThemedText>
+                </View>
+              </View>
             </View>
-            <View style={styles.statBox}>
-              <ThemedText style={[styles.statValue, { color: colors.primary }]}>{hoursWatched}h</ThemedText>
-              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Time</ThemedText>
+            <View style={[styles.statRow, { borderTopWidth: 1, borderTopColor: colors.backgroundElement, paddingTop: 12, marginTop: 12 }]}>
+              <View style={styles.statCompactBox}>
+                <ThemedText style={styles.statIcon}>🎞</ThemedText>
+                <View>
+                  <ThemedText style={[styles.statValue, { color: colors.primary }]}>{moviesCount}</ThemedText>
+                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Movies</ThemedText>
+                </View>
+              </View>
+              <View style={styles.statCompactBox}>
+                <ThemedText style={styles.statIcon}>📺</ThemedText>
+                <View>
+                  <ThemedText style={[styles.statValue, { color: colors.primary }]}>{seriesCount}</ThemedText>
+                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>TV Series</ThemedText>
+                </View>
+              </View>
             </View>
-            <View style={styles.statBox}>
-              <ThemedText style={[styles.statValue, { color: colors.primary }]}>{moviesCount}</ThemedText>
-              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Movies</ThemedText>
-            </View>
-            <View style={styles.statBox}>
-              <ThemedText style={[styles.statValue, { color: colors.primary }]}>{seriesCount}</ThemedText>
-              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Series</ThemedText>
-            </View>
+            {topGenre !== 'None' && (
+              <View style={[styles.topGenreBox, { backgroundColor: colors.backgroundElement }]}>
+                <ThemedText style={styles.topGenreText}>🏆 Top Genre: <ThemedText style={{ color: colors.primary, fontWeight: 'bold' }}>{topGenre}</ThemedText></ThemedText>
+              </View>
+            )}
           </View>
         </View>
 
@@ -216,29 +237,42 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     borderRadius: 12,
     padding: 16,
-    gap: 16,
   },
-  statBox: {
-    flex: 1,
-    minWidth: '40%',
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statCompactBox: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
+    flex: 1,
+    gap: 12,
+  },
+  statIcon: {
+    fontSize: 24,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 18,
     fontWeight: '900',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  topGenreBox: {
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  topGenreText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   carousel: {
     gap: 16,

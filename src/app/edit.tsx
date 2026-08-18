@@ -107,6 +107,16 @@ export default function EditScreen() {
     router.back();
   };
 
+  const formatRuntime = (mins?: number) => {
+    if (!mins) return '';
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
+  const totalEpisodes = mediaBase.seasons?.reduce((acc, s) => acc + s.episodeCount, 0) || 0;
+  const totalSeasons = mediaBase.seasons?.length || 0;
+
   return (
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -114,20 +124,33 @@ export default function EditScreen() {
           <Image source={{ uri: mediaBase.poster }} style={styles.poster} />
           <View style={styles.headerInfo}>
             <ThemedText style={styles.title}>{mediaBase.title}</ThemedText>
-            <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {mediaBase.year} • {mediaBase.type === 'movie' ? 'Movie' : 'TV Series'}
-              {mediaBase.runtime ? ` • ${mediaBase.runtime}m` : ''}
-            </ThemedText>
+            {mediaBase.type === 'movie' ? (
+              <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>
+                {mediaBase.year} • Movie{mediaBase.runtime ? ` • ${formatRuntime(mediaBase.runtime)}` : ''}
+              </ThemedText>
+            ) : (
+              <View>
+                <ThemedText style={[styles.subtitle, { color: colors.textSecondary, marginBottom: 2 }]}>
+                  {mediaBase.year} • TV Series
+                </ThemedText>
+                <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>
+                  {totalEpisodes} episodes • {totalSeasons} seasons
+                </ThemedText>
+              </View>
+            )}
             <ThemedText style={[styles.genres, { color: colors.primary }]}>
               {mediaBase.genres.slice(0, 3).join(', ')}
             </ThemedText>
             
             {mediaBase.tmdbRating !== undefined && mediaBase.tmdbRating > 0 && (
-              <View style={styles.tmdbScore}>
-                <Ionicons name="star" size={16} color={colors.textSecondary} />
-                <ThemedText style={[styles.tmdbScoreText, { color: colors.textSecondary }]}>
-                  {mediaBase.tmdbRating.toFixed(1)} <ThemedText style={{fontSize:12, opacity:0.6}}>({mediaBase.tmdbVoteCount})</ThemedText>
-                </ThemedText>
+              <View style={[styles.tmdbScore, { backgroundColor: colors.backgroundElement }]}>
+                <ThemedText style={styles.tmdbLabel}>TMDB RATING</ThemedText>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="star" size={14} color={colors.textSecondary} />
+                  <ThemedText style={[styles.tmdbScoreText, { color: colors.textSecondary }]}>
+                    {mediaBase.tmdbRating.toFixed(1)} <ThemedText style={{fontSize:12, opacity:0.6}}>· {mediaBase.tmdbVoteCount} votes</ThemedText>
+                  </ThemedText>
+                </View>
               </View>
             )}
           </View>
@@ -157,7 +180,6 @@ export default function EditScreen() {
 
         {mediaBase.type === 'series' && mediaBase.seasons && (
           <View style={styles.seasonsContainer}>
-            <ThemedText style={styles.sectionTitle}>Episodes Watched ({watchedEpisodes.length})</ThemedText>
             {mediaBase.seasons.map(season => {
               const isExpanded = expandedSeason === season.seasonNumber;
               const episodes = seasonEpisodes[season.seasonNumber] || [];
@@ -170,9 +192,9 @@ export default function EditScreen() {
                     onPress={() => handleExpandSeason(season.seasonNumber)}
                   >
                     <View>
-                      <ThemedText style={styles.seasonName}>{season.name || `Season ${season.seasonNumber}`}</ThemedText>
+                      <ThemedText style={styles.seasonName}>{season.name?.toUpperCase() || `SEASON ${season.seasonNumber}`}</ThemedText>
                       <ThemedText style={[styles.seasonMeta, { color: colors.textSecondary }]}>
-                        {watchedInSeason} / {season.episodeCount} watched
+                        {season.episodeCount} episodes · {watchedInSeason} watched
                       </ThemedText>
                     </View>
                     <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={colors.textSecondary} />
@@ -194,12 +216,12 @@ export default function EditScreen() {
                             >
                               <Ionicons 
                                 name={isEpWatched ? "checkbox" : "square-outline"} 
-                                size={24} 
+                                size={20} 
                                 color={isEpWatched ? colors.primary : colors.textSecondary} 
                               />
                               <View style={styles.episodeInfo}>
                                 <ThemedText style={styles.episodeTitle} numberOfLines={1}>
-                                  {ep.episode_number}. {ep.name}
+                                  S{season.seasonNumber}E{ep.episode_number}   {ep.name}
                                 </ThemedText>
                                 {ep.runtime ? (
                                   <ThemedText style={[styles.episodeRuntime, { color: colors.textSecondary }]}>
@@ -221,6 +243,7 @@ export default function EditScreen() {
         )}
 
         <View style={styles.ratingSection}>
+          <ThemedText style={[styles.tmdbLabel, { marginBottom: 16, fontSize: 14 }]}>MY RATING</ThemedText>
           <RatingInput value={rating} onChange={setRating} />
           
           <TouchableOpacity 
@@ -228,7 +251,7 @@ export default function EditScreen() {
             onPress={handleSaveCollection}
           >
             <ThemedText style={styles.saveBtnText}>
-              {existingCollectionItem ? "Update Rating" : "Save to Collection"}
+              {existingCollectionItem ? "Update Collection" : "Save to Collection"}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -238,8 +261,6 @@ export default function EditScreen() {
             style={styles.deleteBtn} 
             onPress={() => {
                if (existingCollectionItem) removeWatched(id);
-               // Also needs removeWatchlist if existingWatchlistItem, wait we don't have removeWatchlist exported easily.
-               // Actually we only show delete for watched items typically.
                if (existingCollectionItem) {
                  router.back();
                }
@@ -293,13 +314,20 @@ const styles = StyleSheet.create({
   genres: {
     fontSize: 14,
     fontWeight: '500',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   tmdbScore: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     marginTop: 8,
+    padding: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  tmdbLabel: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    marginBottom: 4,
+    opacity: 0.8,
   },
   tmdbScoreText: {
     fontSize: 14,
@@ -335,14 +363,6 @@ const styles = StyleSheet.create({
   seasonsContainer: {
     paddingHorizontal: 16,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    opacity: 0.8,
-  },
   seasonCard: {
     borderRadius: 8,
     marginBottom: 8,
@@ -352,25 +372,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
   },
   seasonName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
   seasonMeta: {
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 2,
   },
   episodesList: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingBottom: 8,
   },
   episodeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
     gap: 12,
   },
   episodeInfo: {
@@ -390,13 +411,14 @@ const styles = StyleSheet.create({
   ratingSection: {
     paddingHorizontal: 16,
     alignItems: 'center',
+    marginTop: 16,
   },
   saveBtn: {
     width: '100%',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 16,
   },
   saveBtnText: {
     color: '#000',
