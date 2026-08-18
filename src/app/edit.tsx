@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Image, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCinelog } from '../context/CinelogContext';
 import { ThemedView } from '../components/themed-view';
 import { ThemedText } from '../components/themed-text';
 import { RatingInput } from '../components/RatingInput';
 import { Colors } from '../constants/theme';
-import { mockMedia } from '../data/mock';
 import { Ionicons } from '@expo/vector-icons';
 import { BaseMedia } from '../types';
+import { tmdb } from '../services/tmdb';
 
 export default function EditScreen() {
   const { id, isNew } = useLocalSearchParams<{ id: string; isNew?: string }>();
@@ -17,15 +17,32 @@ export default function EditScreen() {
   const colors = Colors[theme === 'system' ? 'dark' : theme];
 
   const existingItem = collection.find(c => c.id === id);
-  const mediaBase = existingItem || mockMedia.find(m => m.id === id);
-
+  const [mediaBase, setMediaBase] = useState<BaseMedia | null>(existingItem || null);
+  const [isLoading, setIsLoading] = useState(!!isNew && !existingItem);
   const [rating, setRating] = useState<number>(existingItem ? existingItem.rating : 5.0);
 
   useEffect(() => {
-    if (!mediaBase) {
+    if (existingItem) return;
+    
+    if (isNew === 'true') {
+      setIsLoading(true);
+      tmdb.getDetails(id).then(data => {
+        if (data) setMediaBase(data);
+        else router.back();
+        setIsLoading(false);
+      });
+    } else if (!mediaBase) {
       router.back();
     }
-  }, [mediaBase]);
+  }, [id, isNew]);
+
+  if (isLoading) {
+    return (
+      <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </ThemedView>
+    );
+  }
 
   if (!mediaBase) return null;
 

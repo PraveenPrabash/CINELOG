@@ -41,6 +41,21 @@ export default function SettingsScreen() {
           ))}
         </View>
       </View>
+
+      <View style={styles.section}>
+        <ThemedText style={styles.sectionTitle}>About</ThemedText>
+        <View style={[styles.card, { backgroundColor: colors.card, padding: 16 }]}>
+          <ThemedText style={styles.aboutTitle}>CINELOG</ThemedText>
+          <ThemedText style={[styles.aboutText, { color: colors.textSecondary }]}>
+            Your personal movie and TV series tracker. All data is stored locally on your device.
+          </ThemedText>
+          <View style={[styles.tmdbAttribution, { borderTopColor: colors.backgroundElement }]}>
+            <ThemedText style={[styles.tmdbText, { color: colors.textSecondary }]}>
+              This product uses the TMDB API but is not endorsed or certified by TMDB.
+            </ThemedText>
+          </View>
+        </View>
+      </View>
     </ThemedView>
   );
 }
@@ -76,5 +91,24 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: 12,
+  },
+  aboutTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  aboutText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  tmdbAttribution: {
+    borderTopWidth: 1,
+    paddingTop: 16,
+  },
+  tmdbText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    lineHeight: 18,
   },
 });
