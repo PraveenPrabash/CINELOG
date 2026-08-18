@@ -103,14 +103,23 @@ export const tmdb = {
       const year = releaseDate ? releaseDate.split('-')[0] : 'Unknown';
       const poster = item.poster_path ? `${IMAGE_BASE_URL}${item.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Poster';
       const genres = item.genres ? item.genres.map((g: any) => g.name) : [];
+      const overview = item.overview || '';
+      const tmdbRating = item.vote_average || 0;
+      const tmdbVoteCount = item.vote_count || 0;
       
       let runtime = 0;
+      let seasons = undefined;
+      
       if (type === 'movie' && item.runtime) {
         runtime = item.runtime;
-      } else if (type === 'series' && item.episode_run_time && item.episode_run_time.length > 0) {
-        // Use average episode runtime * number of episodes to get total watch time if desired,
-        // or just store episode runtime. We'll store episode runtime * number of episodes if available
-        runtime = (item.episode_run_time[0] || 0) * (item.number_of_episodes || 1);
+      } else if (type === 'series' && item.seasons) {
+        seasons = item.seasons
+          .filter((s: any) => s.season_number > 0) // Skip specials
+          .map((s: any) => ({
+            seasonNumber: s.season_number,
+            episodeCount: s.episode_count,
+            name: s.name,
+          }));
       }
 
       return {
@@ -121,9 +130,33 @@ export const tmdb = {
         type,
         genres,
         runtime,
+        overview,
+        tmdbRating,
+        tmdbVoteCount,
+        seasons,
       } as BaseMedia;
     } catch (error) {
       console.error("TMDB Details Error:", error);
+      return null;
+    }
+  },
+
+  async getSeasonDetails(tmdbIdFull: string, seasonNumber: number): Promise<any> {
+    try {
+      const [typePrefix, tmdbId] = tmdbIdFull.split('-');
+      if (typePrefix !== 't') return null;
+
+      const response = await fetch(
+        `${BASE_URL}/tv/${tmdbId}/season/${seasonNumber}?api_key=${API_KEY}&language=en-US`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch season ${seasonNumber} details`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("TMDB Season Details Error:", error);
       return null;
     }
   }

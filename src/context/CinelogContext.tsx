@@ -8,7 +8,7 @@ interface CinelogContextType {
   collection: WatchedItem[];
   watchlist: WatchlistItem[];
   theme: ThemePreference;
-  addWatched: (item: BaseMedia, rating: number) => Promise<void>;
+  addWatched: (item: BaseMedia, rating: number, watchedEpisodes?: any[]) => Promise<void>;
   updateWatched: (id: string, updates: Partial<WatchedItem>) => Promise<void>;
   removeWatched: (id: string) => Promise<void>;
   addToWatchlist: (item: BaseMedia) => Promise<void>;
@@ -76,11 +76,12 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const addWatched = async (item: BaseMedia, rating: number) => {
+  const addWatched = async (item: BaseMedia, rating: number, watchedEpisodes?: any[]) => {
     const newItem: WatchedItem = {
       ...item,
       rating,
       dateAdded: Date.now(),
+      watchedEpisodes,
     };
     
     // If it's in watchlist, remove it

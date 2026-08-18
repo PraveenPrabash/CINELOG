@@ -1,6 +1,5 @@
-import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useRef } from 'react';
+import { StyleSheet, View, PanResponder, Dimensions, Animated } from 'react-native';
 import { ThemedText } from './themed-text';
 import { Colors } from '../constants/theme';
 import { useCinelog } from '../context/CinelogContext';
@@ -13,87 +12,128 @@ interface RatingInputProps {
 export function RatingInput({ value, onChange }: RatingInputProps) {
   const { theme } = useCinelog();
   const colors = Colors[theme === 'system' ? 'dark' : theme];
+  
+  const SLIDER_WIDTH = Dimensions.get('window').width - 64; // 32 padding on each side
 
-  const handleDecrease = () => {
-    if (value > 0) onChange(Number(Math.max(0, value - 0.1).toFixed(1)));
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt, gestureState) => {
+        handleScrub(evt.nativeEvent.locationX);
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        // gestureState.moveX is absolute screen position. Better to use local coordinates 
+        // if possible, but moveX works if we approximate container pos, or just track diffs.
+        // For a simple custom slider, tracking dx from initial grant is easier:
+        // Actually, just calculating percentage based on the touch position within the view bounds:
+        handleScrub(evt.nativeEvent.locationX);
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        handleScrub(evt.nativeEvent.locationX);
+      },
+    })
+  ).current;
+
+  const handleScrub = (xPos: number) => {
+    let percentage = xPos / SLIDER_WIDTH;
+    if (percentage < 0) percentage = 0;
+    if (percentage > 1) percentage = 1;
+
+    let newValue = percentage * 10;
+    // Round to nearest 0.1
+    newValue = Math.round(newValue * 10) / 10;
+    
+    onChange(newValue);
   };
 
-  const handleIncrease = () => {
-    if (value < 10) onChange(Number(Math.min(10, value + 0.1).toFixed(1)));
-  };
-
-  const handleLargeDecrease = () => {
-    if (value > 0) onChange(Number(Math.max(0, value - 1.0).toFixed(1)));
-  };
-
-  const handleLargeIncrease = () => {
-    if (value < 10) onChange(Number(Math.min(10, value + 1.0).toFixed(1)));
-  };
+  const fillWidth = (value / 10) * 100;
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={[styles.button, { backgroundColor: colors.backgroundElement }]} 
-        onPress={handleLargeDecrease}
-      >
-        <Ionicons name="play-back" size={20} color={colors.text} />
-      </TouchableOpacity>
+      <ThemedText style={[styles.label, { color: colors.textSecondary }]}>MY RATING</ThemedText>
       
-      <TouchableOpacity 
-        style={[styles.button, { backgroundColor: colors.backgroundElement }]} 
-        onPress={handleDecrease}
-      >
-        <Ionicons name="remove" size={24} color={colors.text} />
-      </TouchableOpacity>
-
-      <View style={[styles.display, { backgroundColor: colors.card, borderColor: colors.primary }]}>
-        <ThemedText style={[styles.ratingText, { color: colors.primary }]}>
+      <View style={styles.valueContainer}>
+        <ThemedText style={[styles.valueText, { color: colors.primary }]}>
           {value.toFixed(1)}
         </ThemedText>
       </View>
 
-      <TouchableOpacity 
-        style={[styles.button, { backgroundColor: colors.backgroundElement }]} 
-        onPress={handleIncrease}
-      >
-        <Ionicons name="add" size={24} color={colors.text} />
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={[styles.button, { backgroundColor: colors.backgroundElement }]} 
-        onPress={handleLargeIncrease}
-      >
-        <Ionicons name="play-forward" size={20} color={colors.text} />
-      </TouchableOpacity>
+      <View style={styles.sliderContainer} {...panResponder.panHandlers}>
+        <View style={[styles.track, { backgroundColor: colors.backgroundElement }]}>
+          <View style={[styles.fill, { width: `${fillWidth}%`, backgroundColor: colors.primary }]} />
+        </View>
+        <View style={[
+          styles.thumb, 
+          { 
+            left: `${fillWidth}%`, 
+            backgroundColor: colors.card,
+            borderColor: colors.primary
+          }
+        ]} />
+      </View>
+      <View style={styles.scaleLabels}>
+        <ThemedText style={[styles.scaleText, { color: colors.textSecondary }]}>0.0</ThemedText>
+        <ThemedText style={[styles.scaleText, { color: colors.textSecondary }]}>10.0</ThemedText>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
     marginVertical: 24,
   },
-  button: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  display: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ratingText: {
-    fontSize: 32,
+  label: {
+    fontSize: 14,
     fontWeight: 'bold',
+    letterSpacing: 2,
+    marginBottom: 16,
+  },
+  valueContainer: {
+    marginBottom: 24,
+  },
+  valueText: {
+    fontSize: 56,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+  },
+  sliderContainer: {
+    width: '100%',
+    height: 40,
+    justifyContent: 'center',
+  },
+  track: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+  },
+  thumb: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 3,
+    marginLeft: -12, // center thumb over value
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  scaleLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 8,
+  },
+  scaleText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

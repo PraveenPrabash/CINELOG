@@ -1,140 +1,182 @@
 import React from 'react';
-import { StyleSheet, FlatList, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, ScrollView, View, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCinelog } from '../../context/CinelogContext';
-import { CarouselMediaCard } from '../../components/CarouselMediaCard';
-import { StatsCard } from '../../components/StatsCard';
 import { ThemedView } from '../../components/themed-view';
 import { ThemedText } from '../../components/themed-text';
 import { Colors } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { CarouselMediaCard } from '../../components/CarouselMediaCard';
 
 export default function HomeScreen() {
   const { collection, watchlist, theme } = useCinelog();
+  const colors = Colors[theme === 'system' ? 'dark' : theme];
   const router = useRouter();
-  
-  const currentTheme = theme === 'system' ? 'dark' : theme;
-  const colors = Colors[currentTheme];
 
-  // Get top rated items
-  const topRated = [...collection].filter(i => i.rating >= 8).slice(0, 5);
-  // Get recently added items (using id fallback if no date added)
-  const recentlyAdded = [...collection].reverse().slice(0, 5);
+  // Watch Time Calculation
+  let totalWatchTime = 0;
+  let moviesCount = 0;
+  let seriesCount = 0;
+  
+  const genreCounts: Record<string, number> = {};
+
+  collection.forEach(item => {
+    if (item.type === 'movie') {
+      moviesCount++;
+      if (item.runtime) totalWatchTime += item.runtime;
+    } else if (item.type === 'series') {
+      seriesCount++;
+      if (item.watchedEpisodes) {
+        item.watchedEpisodes.forEach(ep => {
+          if (ep.runtime) totalWatchTime += ep.runtime;
+        });
+      }
+    }
+    
+    item.genres.forEach(g => {
+      genreCounts[g] = (genreCounts[g] || 0) + 1;
+    });
+  });
+
+  const hoursWatched = Math.floor(totalWatchTime / 60);
+
+  // Top Genre
+  let topGenre = 'None';
+  let maxGenreCount = 0;
+  Object.entries(genreCounts).forEach(([genre, count]) => {
+    if (count > maxGenreCount) {
+      maxGenreCount = count;
+      topGenre = genre;
+    }
+  });
+
+  const sortedCollection = [...collection].sort((a, b) => (a.rank || 999) - (b.rank || 999));
+  const topRated = sortedCollection.slice(0, 10);
+  const recentlyAdded = [...collection].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10);
+  const recentWatchlist = [...watchlist].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10);
+
+  const hasInsightsData = collection.length > 0;
+  const milestonesReached: string[] = [];
+  if (collection.length >= 10) milestonesReached.push("10 Titles Watched");
+  if (collection.length >= 50) milestonesReached.push("50 Titles Watched");
+  if (hoursWatched >= 100) milestonesReached.push("100 Hours Watched");
+  if (seriesCount >= 1) milestonesReached.push("First TV Series Watched");
 
   return (
     <ThemedView style={styles.container}>
-      <FlatList
-        data={[{ key: 'dashboard' }]}
-        keyExtractor={item => item.key}
-        showsVerticalScrollIndicator={false}
-        renderItem={() => (
-          <View style={styles.dashboardContent}>
-            
-            {/* Collection Statistics */}
-            <StatsCard collection={collection} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        
+        {/* ACTION BUTTON */}
+        <TouchableOpacity 
+          style={[styles.addButton, { backgroundColor: colors.primary }]}
+          onPress={() => router.push('/search')}
+        >
+          <Ionicons name="add" size={24} color="#000" />
+          <ThemedText style={styles.addButtonText}>Add Movie / Series</ThemedText>
+        </TouchableOpacity>
 
-            {/* Add Movie / Series Button */}
-            <TouchableOpacity 
-              style={[styles.addButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push('/search')}
-            >
-              <Ionicons name="add-circle" size={24} color="#000" />
-              <ThemedText style={styles.addButtonText}>Add Movie / Series</ThemedText>
-            </TouchableOpacity>
-
-            {/* Watchlist Preview */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <ThemedText style={styles.sectionTitle}>Watchlist Preview</ThemedText>
-                <TouchableOpacity onPress={() => router.push('/watchlist')}>
-                  <ThemedText style={[styles.sectionLink, { color: colors.primary }]}>View All</ThemedText>
-                </TouchableOpacity>
-              </View>
-              {watchlist.length > 0 ? (
-                <FlatList
-                  data={watchlist.slice(0, 5)}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalListContent}
-                  keyExtractor={item => item.id}
-                  renderItem={({ item }) => (
-                    <CarouselMediaCard item={item} onPress={() => router.push('/watchlist')} variant="watchlist" />
-                  )}
-                />
-              ) : (
-                <ThemedText style={[styles.emptyPreview, { color: colors.textSecondary }]}>
-                  Your watchlist is empty.
-                </ThemedText>
-              )}
+        {/* STATS DASHBOARD */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>My Collection</ThemedText>
+          <View style={[styles.statsGrid, { backgroundColor: colors.card }]}>
+            <View style={styles.statBox}>
+              <ThemedText style={[styles.statValue, { color: colors.primary }]}>{collection.length}</ThemedText>
+              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Watched</ThemedText>
             </View>
-
-            {/* Your Top Rated */}
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Your Top Rated</ThemedText>
-              {topRated.length > 0 ? (
-                <FlatList
-                  data={topRated}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalListContent}
-                  keyExtractor={item => item.id}
-                  renderItem={({ item }) => (
-                    <CarouselMediaCard item={item} onPress={() => router.push({ pathname: '/edit', params: { id: item.id } })} variant="home" />
-                  )}
-                />
-              ) : (
-                <ThemedText style={[styles.emptyPreview, { color: colors.textSecondary }]}>
-                  Log and rate media to see your top rated.
-                </ThemedText>
-              )}
+            <View style={styles.statBox}>
+              <ThemedText style={[styles.statValue, { color: colors.primary }]}>{hoursWatched}h</ThemedText>
+              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Time</ThemedText>
             </View>
-
-            {/* Recently Added */}
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Recently Added</ThemedText>
-              {recentlyAdded.length > 0 ? (
-                <FlatList
-                  data={recentlyAdded}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalListContent}
-                  keyExtractor={item => item.id}
-                  renderItem={({ item }) => (
-                    <CarouselMediaCard item={item} onPress={() => router.push({ pathname: '/edit', params: { id: item.id } })} variant="home" />
-                  )}
-                />
-              ) : (
-                <ThemedText style={[styles.emptyPreview, { color: colors.textSecondary }]}>
-                  Log media to see recently added.
-                </ThemedText>
-              )}
+            <View style={styles.statBox}>
+              <ThemedText style={[styles.statValue, { color: colors.primary }]}>{moviesCount}</ThemedText>
+              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Movies</ThemedText>
             </View>
-
-            {/* Taste / Insights Placeholder */}
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Taste & Insights</ThemedText>
-              <View style={[styles.placeholderBox, { backgroundColor: colors.backgroundElement }]}>
-                <Ionicons name="pie-chart-outline" size={32} color={colors.textSecondary} />
-                <ThemedText style={[styles.placeholderText, { color: colors.textSecondary }]}>
-                  Coming soon. Deep dive into your watching habits.
-                </ThemedText>
-              </View>
+            <View style={styles.statBox}>
+              <ThemedText style={[styles.statValue, { color: colors.primary }]}>{seriesCount}</ThemedText>
+              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Series</ThemedText>
             </View>
+          </View>
+        </View>
 
-            {/* Personal Milestones Placeholder */}
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Personal Milestones</ThemedText>
-              <View style={[styles.placeholderBox, { backgroundColor: colors.backgroundElement }]}>
-                <Ionicons name="ribbon-outline" size={32} color={colors.textSecondary} />
-                <ThemedText style={[styles.placeholderText, { color: colors.textSecondary }]}>
-                  Coming soon. Track your movie watching streaks.
-                </ThemedText>
-              </View>
-            </View>
-
+        {/* CAROUSELS */}
+        {topRated.length > 0 && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Your Top Rated</ThemedText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
+              {topRated.map(item => (
+                <CarouselMediaCard key={item.id} item={item} onPress={() => router.push({ pathname: '/edit', params: { id: item.id } })} variant="home" />
+              ))}
+            </ScrollView>
           </View>
         )}
-      />
+
+        {recentlyAdded.length > 0 && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Recently Added</ThemedText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
+              {recentlyAdded.map(item => (
+                <CarouselMediaCard key={item.id} item={item} onPress={() => router.push({ pathname: '/edit', params: { id: item.id } })} variant="home" />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {recentWatchlist.length > 0 && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Watchlist Preview</ThemedText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
+              {recentWatchlist.map(item => (
+                <CarouselMediaCard key={item.id} item={item} onPress={() => router.push({ pathname: '/edit', params: { id: item.id } })} variant="watchlist" />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* TASTE & INSIGHTS */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Taste & Insights</ThemedText>
+          <View style={[styles.insightsCard, { backgroundColor: colors.card }]}>
+            {hasInsightsData ? (
+              <>
+                <View style={styles.insightRow}>
+                  <ThemedText style={styles.insightLabel}>Top Genre</ThemedText>
+                  <ThemedText style={[styles.insightValue, { color: colors.primary }]}>{topGenre}</ThemedText>
+                </View>
+                <View style={styles.insightRow}>
+                  <ThemedText style={styles.insightLabel}>Movies vs TV</ThemedText>
+                  <ThemedText style={[styles.insightValue, { color: colors.primary }]}>
+                    {moviesCount} : {seriesCount}
+                  </ThemedText>
+                </View>
+              </>
+            ) : (
+              <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                Add more titles to unlock your watching insights.
+              </ThemedText>
+            )}
+          </View>
+        </View>
+
+        {/* MILESTONES */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Milestones</ThemedText>
+          <View style={[styles.insightsCard, { backgroundColor: colors.card }]}>
+            {milestonesReached.length > 0 ? (
+              milestonesReached.map((m, i) => (
+                <View key={i} style={styles.milestoneRow}>
+                  <Ionicons name="trophy" size={20} color={colors.primary} />
+                  <ThemedText style={styles.milestoneText}>{m}</ThemedText>
+                </View>
+              ))
+            ) : (
+              <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                Keep watching to unlock personal milestones!
+              </ThemedText>
+            )}
+          </View>
+        </View>
+        
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -142,68 +184,100 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 16,
   },
-  dashboardContent: {
+  scrollContent: {
+    padding: 16,
+    paddingTop: 60,
     paddingBottom: 40,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 16,
-    marginBottom: 24,
-    paddingVertical: 14,
+    padding: 16,
     borderRadius: 12,
+    marginBottom: 24,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
   },
   addButtonText: {
     color: '#000',
+    fontSize: 18,
     fontWeight: 'bold',
-    fontSize: 16,
   },
   section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 16,
+    opacity: 0.8,
   },
-  sectionLink: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  horizontalListContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 4, // Allow room for shadow rendering
-  },
-  emptyPreview: {
-    paddingHorizontal: 16,
-    fontStyle: 'italic',
-  },
-  placeholderBox: {
-    marginHorizontal: 16,
-    padding: 24,
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     borderRadius: 12,
-    alignItems: 'center',
-    gap: 12,
+    padding: 16,
+    gap: 16,
   },
-  placeholderText: {
+  statBox: {
+    flex: 1,
+    minWidth: '40%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  carousel: {
+    gap: 16,
+  },
+  insightsCard: {
+    borderRadius: 12,
+    padding: 16,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  insightLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  insightValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  milestoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  milestoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyText: {
     textAlign: 'center',
-    fontSize: 14,
+    paddingVertical: 24,
+    fontStyle: 'italic',
   },
 });

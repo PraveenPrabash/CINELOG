@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Image, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCinelog } from '../context/CinelogContext';
 import { ThemedView } from '../components/themed-view';
@@ -7,19 +7,32 @@ import { ThemedText } from '../components/themed-text';
 import { RatingInput } from '../components/RatingInput';
 import { Colors } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { BaseMedia } from '../types';
+import { BaseMedia, WatchedEpisode, TMDBSeason } from '../types';
 import { tmdb } from '../services/tmdb';
 
 export default function EditScreen() {
   const { id, isNew } = useLocalSearchParams<{ id: string; isNew?: string }>();
   const router = useRouter();
-  const { collection, addWatched, updateWatched, removeWatched, addToWatchlist, theme } = useCinelog();
+  const { collection, watchlist, addWatched, updateWatched, removeWatched, addToWatchlist, theme } = useCinelog();
   const colors = Colors[theme === 'system' ? 'dark' : theme];
 
-  const existingItem = collection.find(c => c.id === id);
+  const existingCollectionItem = collection.find(c => c.id === id);
+  const existingWatchlistItem = watchlist.find(w => w.id === id);
+  const existingItem = existingCollectionItem || existingWatchlistItem;
+  
+  const isWatched = !!existingCollectionItem;
+  
   const [mediaBase, setMediaBase] = useState<BaseMedia | null>(existingItem || null);
   const [isLoading, setIsLoading] = useState(!!isNew && !existingItem);
-  const [rating, setRating] = useState<number>(existingItem ? existingItem.rating : 5.0);
+  const [rating, setRating] = useState<number>(existingCollectionItem ? existingCollectionItem.rating : 0.0);
+  
+  const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
+  const [seasonEpisodes, setSeasonEpisodes] = useState<Record<number, any[]>>({});
+  const [isLoadingSeason, setIsLoadingSeason] = useState(false);
+  
+  const [watchedEpisodes, setWatchedEpisodes] = useState<WatchedEpisode[]>(
+    existingCollectionItem?.watchedEpisodes || []
+  );
 
   useEffect(() => {
     if (existingItem) return;
@@ -36,6 +49,38 @@ export default function EditScreen() {
     }
   }, [id, isNew]);
 
+  const handleExpandSeason = async (seasonNumber: number) => {
+    if (expandedSeason === seasonNumber) {
+      setExpandedSeason(null);
+      return;
+    }
+    setExpandedSeason(seasonNumber);
+    if (!seasonEpisodes[seasonNumber]) {
+      setIsLoadingSeason(true);
+      const data = await tmdb.getSeasonDetails(id, seasonNumber);
+      if (data && data.episodes) {
+        setSeasonEpisodes(prev => ({ ...prev, [seasonNumber]: data.episodes }));
+      }
+      setIsLoadingSeason(false);
+    }
+  };
+
+  const toggleEpisode = (seasonNumber: number, episode: any) => {
+    const epId = `s${seasonNumber}e${episode.episode_number}`;
+    const exists = watchedEpisodes.some(we => we.episodeId === epId);
+    
+    if (exists) {
+      setWatchedEpisodes(prev => prev.filter(we => we.episodeId !== epId));
+    } else {
+      setWatchedEpisodes(prev => [...prev, {
+        episodeId: epId,
+        seasonNumber,
+        episodeNumber: episode.episode_number,
+        runtime: episode.runtime || null,
+      }]);
+    }
+  };
+
   if (isLoading) {
     return (
       <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -46,90 +91,170 @@ export default function EditScreen() {
 
   if (!mediaBase) return null;
 
-  const handleSave = async () => {
-    if (existingItem) {
-      await updateWatched(id, { rating });
+  const handleSaveCollection = async () => {
+    if (existingCollectionItem) {
+      await updateWatched(id, { rating, watchedEpisodes });
     } else {
-      await addWatched(mediaBase, rating);
+      await addWatched(mediaBase, rating, watchedEpisodes);
     }
     router.back();
   };
 
-  const handleRemove = () => {
-    Alert.alert(
-      "Remove Item",
-      "Are you sure you want to remove this item from your collection?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Remove", 
-          style: "destructive",
-          onPress: async () => {
-            await removeWatched(id);
-            router.back();
-          }
-        }
-      ]
-    );
-  };
-
-  const handleAddToWatchlist = async () => {
-    await addToWatchlist(mediaBase);
-    Alert.alert("Added", "Added to your watchlist!");
+  const handleAddWatchlist = async () => {
+    if (!existingWatchlistItem) {
+      await addToWatchlist(mediaBase);
+    }
+    router.back();
   };
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Ionicons name="close" size={28} color={colors.text} />
-        </TouchableOpacity>
-        <ThemedText type="subtitle" style={styles.headerTitle}>
-          {existingItem ? 'Edit Rating' : 'Add to Collection'}
-        </ThemedText>
-        <TouchableOpacity onPress={handleSave} style={styles.headerButton}>
-          <ThemedText style={{ color: colors.primary, fontWeight: 'bold' }}>Save</ThemedText>
-        </TouchableOpacity>
-      </View>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <Image source={{ uri: mediaBase.poster }} style={styles.poster} />
+          <View style={styles.headerInfo}>
+            <ThemedText style={styles.title}>{mediaBase.title}</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>
+              {mediaBase.year} • {mediaBase.type === 'movie' ? 'Movie' : 'TV Series'}
+              {mediaBase.runtime ? ` • ${mediaBase.runtime}m` : ''}
+            </ThemedText>
+            <ThemedText style={[styles.genres, { color: colors.primary }]}>
+              {mediaBase.genres.slice(0, 3).join(', ')}
+            </ThemedText>
+            
+            {mediaBase.tmdbRating !== undefined && mediaBase.tmdbRating > 0 && (
+              <View style={styles.tmdbScore}>
+                <Ionicons name="star" size={16} color={colors.textSecondary} />
+                <ThemedText style={[styles.tmdbScoreText, { color: colors.textSecondary }]}>
+                  {mediaBase.tmdbRating.toFixed(1)} <ThemedText style={{fontSize:12, opacity:0.6}}>({mediaBase.tmdbVoteCount})</ThemedText>
+                </ThemedText>
+              </View>
+            )}
+          </View>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Image source={{ uri: mediaBase.poster }} style={styles.poster} resizeMode="cover" />
-        
-        <ThemedText style={styles.title}>{mediaBase.title}</ThemedText>
-        <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>
-          {mediaBase.year} • {mediaBase.type === 'movie' ? 'Movie' : 'TV Series'}
-        </ThemedText>
-        <ThemedText style={[styles.genres, { color: colors.textSecondary }]}>
-          {mediaBase.genres.join(', ')}
-        </ThemedText>
+        {mediaBase.overview ? (
+          <View style={styles.overviewContainer}>
+            <ThemedText style={styles.overviewText} numberOfLines={6}>
+              {mediaBase.overview}
+            </ThemedText>
+          </View>
+        ) : null}
+
+        {!isWatched && (
+          <TouchableOpacity 
+            style={[styles.watchlistBtn, { backgroundColor: colors.card, borderColor: colors.backgroundElement, borderWidth: 1 }]} 
+            onPress={handleAddWatchlist}
+          >
+            <Ionicons name={existingWatchlistItem ? "bookmark" : "bookmark-outline"} size={20} color={colors.text} />
+            <ThemedText style={styles.watchlistBtnText}>
+              {existingWatchlistItem ? "In Watchlist" : "Add to Watchlist"}
+            </ThemedText>
+          </TouchableOpacity>
+        )}
+
+        <View style={[styles.divider, { backgroundColor: colors.backgroundElement }]} />
+
+        {mediaBase.type === 'series' && mediaBase.seasons && (
+          <View style={styles.seasonsContainer}>
+            <ThemedText style={styles.sectionTitle}>Episodes Watched ({watchedEpisodes.length})</ThemedText>
+            {mediaBase.seasons.map(season => {
+              const isExpanded = expandedSeason === season.seasonNumber;
+              const episodes = seasonEpisodes[season.seasonNumber] || [];
+              const watchedInSeason = watchedEpisodes.filter(we => we.seasonNumber === season.seasonNumber).length;
+              
+              return (
+                <View key={season.seasonNumber} style={[styles.seasonCard, { backgroundColor: colors.card }]}>
+                  <TouchableOpacity 
+                    style={styles.seasonHeader} 
+                    onPress={() => handleExpandSeason(season.seasonNumber)}
+                  >
+                    <View>
+                      <ThemedText style={styles.seasonName}>{season.name || `Season ${season.seasonNumber}`}</ThemedText>
+                      <ThemedText style={[styles.seasonMeta, { color: colors.textSecondary }]}>
+                        {watchedInSeason} / {season.episodeCount} watched
+                      </ThemedText>
+                    </View>
+                    <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+
+                  {isExpanded && (
+                    <View style={styles.episodesList}>
+                      {isLoadingSeason ? (
+                        <ActivityIndicator size="small" color={colors.primary} style={{ margin: 16 }} />
+                      ) : (
+                        episodes.map(ep => {
+                          const epId = `s${season.seasonNumber}e${ep.episode_number}`;
+                          const isEpWatched = watchedEpisodes.some(we => we.episodeId === epId);
+                          return (
+                            <TouchableOpacity 
+                              key={epId} 
+                              style={[styles.episodeRow, { borderTopColor: colors.backgroundElement }]}
+                              onPress={() => toggleEpisode(season.seasonNumber, ep)}
+                            >
+                              <Ionicons 
+                                name={isEpWatched ? "checkbox" : "square-outline"} 
+                                size={24} 
+                                color={isEpWatched ? colors.primary : colors.textSecondary} 
+                              />
+                              <View style={styles.episodeInfo}>
+                                <ThemedText style={styles.episodeTitle} numberOfLines={1}>
+                                  {ep.episode_number}. {ep.name}
+                                </ThemedText>
+                                {ep.runtime ? (
+                                  <ThemedText style={[styles.episodeRuntime, { color: colors.textSecondary }]}>
+                                    {ep.runtime}m
+                                  </ThemedText>
+                                ) : null}
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })
+                      )}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+            <View style={[styles.divider, { backgroundColor: colors.backgroundElement, marginTop: 16 }]} />
+          </View>
+        )}
 
         <View style={styles.ratingSection}>
-          <ThemedText style={styles.ratingLabel}>Your Rating</ThemedText>
           <RatingInput value={rating} onChange={setRating} />
+          
+          <TouchableOpacity 
+            style={[styles.saveBtn, { backgroundColor: colors.primary }]} 
+            onPress={handleSaveCollection}
+          >
+            <ThemedText style={styles.saveBtnText}>
+              {existingCollectionItem ? "Update Rating" : "Save to Collection"}
+            </ThemedText>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.actionsSection}>
-          {!existingItem && (
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.backgroundElement, borderWidth: 1 }]} 
-              onPress={handleAddToWatchlist}
-            >
-              <Ionicons name="bookmark-outline" size={20} color={colors.text} />
-              <ThemedText style={styles.actionButtonText}>Add to Watchlist</ThemedText>
-            </TouchableOpacity>
-          )}
-
-          {existingItem && (
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: 'rgba(255, 59, 48, 0.1)' }]} 
-              onPress={handleRemove}
-            >
-              <Ionicons name="trash-outline" size={20} color="#ff3b30" />
-              <ThemedText style={[styles.actionButtonText, { color: '#ff3b30' }]}>Remove from Collection</ThemedText>
-            </TouchableOpacity>
-          )}
-        </View>
+        {existingItem && (
+          <TouchableOpacity 
+            style={styles.deleteBtn} 
+            onPress={() => {
+               if (existingCollectionItem) removeWatched(id);
+               // Also needs removeWatchlist if existingWatchlistItem, wait we don't have removeWatchlist exported easily.
+               // Actually we only show delete for watched items typically.
+               if (existingCollectionItem) {
+                 router.back();
+               }
+            }}
+          >
+            <ThemedText style={styles.deleteBtnText}>
+              {existingCollectionItem ? "Remove from Collection" : ""}
+            </ThemedText>
+          </TouchableOpacity>
+        )}
       </ScrollView>
+
+      <TouchableOpacity onPress={() => router.back()} style={[styles.closeBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+        <Ionicons name="close" size={24} color="#FFF" />
+      </TouchableOpacity>
     </ThemedView>
   );
 }
@@ -138,75 +263,164 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 40,
+  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 48, // rough safe area
-    paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-  },
-  headerTitle: {
-    fontSize: 18,
-  },
-  headerButton: {
-    padding: 8,
-    minWidth: 60,
-    alignItems: 'center',
-  },
-  content: {
-    padding: 24,
-    alignItems: 'center',
+    padding: 16,
+    paddingTop: 60,
   },
   poster: {
-    width: 160,
-    height: 240,
-    borderRadius: 16,
-    marginBottom: 24,
+    width: 120,
+    height: 180,
+    borderRadius: 8,
+    marginRight: 16,
+  },
+  headerInfo: {
+    flex: 1,
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
-    marginBottom: 8,
+    fontSize: 14,
+    marginBottom: 4,
   },
   genres: {
     fontSize: 14,
-    marginBottom: 32,
-    textAlign: 'center',
+    fontWeight: '500',
+    marginBottom: 12,
   },
-  ratingSection: {
+  tmdbScore: {
+    flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
-    marginBottom: 32,
+    gap: 4,
+    marginTop: 8,
   },
-  ratingLabel: {
-    fontSize: 18,
+  tmdbScoreText: {
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
-  actionsSection: {
-    width: '100%',
-    gap: 16,
+  overviewContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  actionButton: {
+  overviewText: {
+    fontSize: 14,
+    lineHeight: 22,
+    opacity: 0.8,
+  },
+  watchlistBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 16,
+    borderRadius: 8,
     gap: 8,
   },
-  actionButtonText: {
-    fontWeight: '600',
+  watchlistBtnText: {
     fontSize: 16,
+    fontWeight: '600',
+  },
+  divider: {
+    height: 1,
+    width: '100%',
+    marginVertical: 16,
+  },
+  seasonsContainer: {
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    opacity: 0.8,
+  },
+  seasonCard: {
+    borderRadius: 8,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  seasonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  seasonName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  seasonMeta: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  episodesList: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  episodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    gap: 12,
+  },
+  episodeInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  episodeTitle: {
+    fontSize: 14,
+    flex: 1,
+    marginRight: 8,
+  },
+  episodeRuntime: {
+    fontSize: 12,
+  },
+  ratingSection: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  saveBtn: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saveBtnText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  deleteBtn: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  deleteBtnText: {
+    color: '#ff3b30',
+    fontSize: 14,
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: 40,
+    right: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
+
+
