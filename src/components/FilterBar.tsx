@@ -49,7 +49,9 @@ export function FilterBar({ filters, activeFilter, onSelect }: FilterBarProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    marginBottom: 8,
   },
   scrollContent: {
     paddingHorizontal: 16,
