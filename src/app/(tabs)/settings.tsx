@@ -33,8 +33,11 @@ export default function SettingsScreen() {
         <View style={[styles.card, { backgroundColor: colors.card }]}>
           <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.backgroundElement }]}>
             <View style={styles.rowLeft}>
-              <Ionicons name="person-circle" size={20} color={colors.text} style={styles.icon} />
-              <ThemedText>{user?.email || 'Logged in'}</ThemedText>
+              <Ionicons name="person-circle" size={32} color={colors.primary} style={styles.icon} />
+              <View>
+                <ThemedText style={{ fontWeight: 'bold' }}>{user?.displayName || 'Google User'}</ThemedText>
+                <ThemedText style={{ fontSize: 12, opacity: 0.7 }}>{user?.email || 'Logged in'}</ThemedText>
+              </View>
             </View>
           </View>
           <TouchableOpacity style={styles.row} onPress={handleLogout}>

@@ -1,15 +1,31 @@
-import React from 'react';
-import { StyleSheet, View, TouchableOpacity, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { StyleSheet, View, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { ThemedView } from '../../components/themed-view';
 import { ThemedText } from '../../components/themed-text';
 import { Colors } from '../../constants/theme';
 import { useCinelog } from '../../context/CinelogContext';
+import { useAuth } from '../../context/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function WelcomeScreen() {
-  const router = useRouter();
   const { theme } = useCinelog();
+  const { loginWithGoogle } = useAuth();
   const colors = Colors[theme === 'system' ? 'dark' : theme];
+  const [loading, setLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      await loginWithGoogle();
+      // Navigation is automatically handled by RootLayoutNav upon auth state change
+    } catch (error: any) {
+      if (error?.message) {
+        Alert.alert('Sign-In Failed', error.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -20,17 +36,18 @@ export default function WelcomeScreen() {
       
       <View style={styles.actions}>
         <TouchableOpacity 
-          style={[styles.button, { backgroundColor: colors.primary }]}
-          onPress={() => router.push('/(auth)/login')}
+          style={[styles.button, { backgroundColor: '#fff' }]}
+          onPress={handleGoogleLogin}
+          disabled={loading}
         >
-          <ThemedText style={styles.buttonText}>Log In</ThemedText>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.buttonOutline, { borderColor: colors.primary }]}
-          onPress={() => router.push('/(auth)/register')}
-        >
-          <ThemedText style={[styles.buttonOutlineText, { color: colors.primary }]}>Create Account</ThemedText>
+          {loading ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <>
+              <Ionicons name="logo-google" size={24} color="#000" style={styles.googleIcon} />
+              <ThemedText style={styles.buttonText}>Continue with Google</ThemedText>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </ThemedView>
@@ -60,26 +77,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   actions: {
-    gap: 16,
     paddingBottom: 48,
   },
   button: {
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  googleIcon: {
+    marginRight: 12,
   },
   buttonText: {
     color: '#000',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  buttonOutline: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 2,
-  },
-  buttonOutlineText: {
     fontSize: 16,
     fontWeight: 'bold',
   },

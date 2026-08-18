@@ -2,20 +2,22 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   User,
   onAuthStateChanged, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  sendPasswordResetEmail
+  signOut,
+  GoogleAuthProvider,
+  signInWithCredential
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
+import { GoogleSignin, isErrorWithCode, statusCodes } from '@react-native-google-signin/google-signin';
+
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+});
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, pass: string) => Promise<void>;
-  register: (email: string, pass: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,24 +35,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const login = async (email: string, pass: string) => {
-    await signInWithEmailAndPassword(auth, email, pass);
-  };
+  const loginWithGoogle = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      const idToken = response.data?.idToken;
+      
+      if (!idToken) {
+        throw new Error('No ID token found');
+      }
 
-  const register = async (email: string, pass: string) => {
-    await createUserWithEmailAndPassword(auth, email, pass);
+      const credential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, credential);
+    } catch (error: any) {
+      if (isErrorWithCode(error)) {
+        if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+          return;
+        } else if (error.code === statusCodes.IN_PROGRESS) {
+          return;
+        } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          throw new Error('Play services not available or outdated');
+        }
+      }
+      throw error;
+    }
   };
 
   const logout = async () => {
     await signOut(auth);
-  };
-
-  const resetPassword = async (email: string) => {
-    await sendPasswordResetEmail(auth, email);
+    try {
+      await GoogleSignin.signOut();
+    } catch (error) {
+      console.log('Google sign out error', error);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, resetPassword }}>
+    <AuthContext.Provider value={{ user, isLoading, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
