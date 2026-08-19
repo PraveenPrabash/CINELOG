@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, Alert, ActivityIndicator, SafeAreaView, Dimensions, StatusBar } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Alert, ActivityIndicator, SafeAreaView, Dimensions, StatusBar, Image } from 'react-native';
+import { Stack } from 'expo-router';
 import { ThemedText } from '../../components/themed-text';
 import { Colors } from '../../constants/theme';
-import { useCinelog } from '../../context/CinelogContext';
 import { useAuth } from '../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
-  const { theme } = useCinelog();
   const { loginWithGoogle } = useAuth();
-  const colors = Colors[theme === 'system' ? 'dark' : theme];
   const [loading, setLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
@@ -30,6 +28,7 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="light-content" backgroundColor="#020D19" />
       
       {/* Subtle Cinematic Background Decorations */}
@@ -40,9 +39,11 @@ export default function WelcomeScreen() {
       
       <View style={styles.content}>
         <View style={styles.headerSection}>
-          <View style={styles.logoContainer}>
-            <ThemedText style={styles.title}>CINELOG</ThemedText>
-          </View>
+          <Image 
+            source={require('../../../trlogo.png')} 
+            style={styles.logoImage} 
+            resizeMode="contain" 
+          />
           <ThemedText style={styles.subtitle}>Your personal movie and TV series tracker.</ThemedText>
         </View>
         
@@ -102,19 +103,12 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     alignItems: 'center',
-    marginBottom: 48, // Creates space directly between subtitle and button
+    marginBottom: 40, // Space directly between subtitle and button
   },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoImage: {
+    width: width * 0.8,
+    height: 120, // Enough height so it is not clipped
     marginBottom: 16,
-  },
-  title: {
-    fontSize: 42, 
-    fontWeight: '900',
-    letterSpacing: 10,
-    color: '#ECB365', // Primary brand color / Gold
-    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,

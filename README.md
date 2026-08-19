@@ -1,48 +1,51 @@
 <div align="center">
 
-# 🎬 CINELOG
-### Movie & TV Series Tracker
+<img src="./trlogo.png" alt="CINELOG Logo" width="200" />
+<h1>CINELOG</h1>
+<p>Your personal movie and TV series tracker.</p>
 
-**Track what you watch. Rate what you love. Discover what to watch next.**
-
-Track movies and TV series you've watched, rate your favorites, manage your watchlist, and discover what's trending — all in one cinematic personal watch tracker.
+CINELOG is a personal movie and TV series tracker that helps you track what you've watched, build your collection, manage your watchlist, rate movies and TV shows, and discover popular and trending titles.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold.svg)](https://opensource.org/licenses/MIT)
 [![React Native](https://img.shields.io/badge/React_Native-0.81.5-blue.svg)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-54.0.0-black.svg)](https://expo.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2-3178C6.svg)](https://www.typescriptlang.org/)
-[![Firebase](https://img.shields.io/badge/Firebase-12.17.1-FFCA28.svg)](https://firebase.google.com/)
-[![TMDB](https://img.shields.io/badge/TMDB-API-01B4E4.svg)](https://www.themoviedb.org/)
-
-[Features](#-features) • [How it Works](#-how-it-works) • [Screenshots](#-screenshots) • [Tech Stack](#-tech-stack) • [Installation](#-getting-started)
 
 </div>
 
 ---
 
-## 📖 About
+## Preview
 
-**CINELOG** is a polished, personal movie and TV series tracker built with React Native and Expo. Designed with a premium cinematic aesthetic (deep navy, amber/gold accents, minimal layout), the app empowers you to easily catalogue your viewing history.
-
-Whether you want to remember that great film from last week, maintain a backlog of TV shows on your watchlist, or discover the top trending content across the globe, CINELOG keeps your entire filmography perfectly synchronized in the cloud.
+<img src="./preview.png" alt="CINELOG App Preview" />
 
 ## ✨ Features
 
-- **🎬 Personal Collection**: Track movies and TV series you've watched in a dedicated cloud-synced library.
-- **⭐ Personal Ratings**: Rate watched titles on a 0.0–10.0 scale using a beautifully custom-built slider.
-- **🔖 Watchlist**: Save movies and TV series you want to watch later.
-- **🔥 Trending Discovery**: Discover popular and trending movies and TV series across the globe.
-- **🏆 Collection Statistics**: View an elegant dashboard summarizing your total watched count, total movies, total TV series, overall watch time, and top genres.
-- **🔍 TMDB Search**: Instant, reliable search for any movie or TV series powered by the TMDB API.
-- **☁️ Cloud Sync**: Keep your collection synchronized seamlessly across devices through Firebase Cloud Firestore.
-- **🔐 Google Sign-In**: Quick and secure authentication using Firebase Authentication.
+### 🎬 Movie & TV Tracking
+Track movies and TV series you've watched.
 
-## 📱 Screenshots
+### ⭐ Personal Ratings
+Give your watched titles personal ratings from 0.0 to 10.0.
 
-<!-- Add screenshots here -->
-<div align="center">
-  <p><i>(Screenshots illustrating Home, Collection, Watchlist, Details, Search, and Authentication will be added here.)</i></p>
-</div>
+### 📚 Collection
+See your watched movies and TV series in one organized collection.
+
+### 🔖 Watchlist
+Save movies and TV series you want to watch later.
+
+### 🔥 Discovery
+Discover popular and trending movies and TV series using TMDB.
+
+### 📊 Personal Statistics
+See total watched titles, movies vs TV series, watch time, and top genre.
+
+### 🌙 Dark / Light Theme
+Seamless adaptation to your device's visual style, maintaining a premium cinematic aesthetic.
+
+### 🔐 Google Authentication
+Secure sign-in with Google.
+
+### ☁️ Cloud Sync
+Your personal collection and watchlist are synchronized through Firebase.
 
 ## ⚙️ How It Works
 
@@ -50,7 +53,7 @@ Whether you want to remember that great film from last week, maintain a backlog 
 2. **Search**: Find a movie or TV series you're interested in using the integrated TMDB search.
 3. **Open Details**: Tap any poster to view rich metadata, synopsis, and TMDB ratings.
 4. **Log & Save**: Add it to your Personal Collection (if watched) or Watchlist (if saving for later).
-5. **Rate**: Give watched titles a personal rating from 0.0 to 10.0.
+5. **Rate**: Give watched titles a personal rating.
 6. **Track Statistics**: Visit your Home dashboard to view your lifetime watch hours and favorite genres.
 7. **Discover**: Browse the "Popular" and "Trending" feeds to find your next favorite film.
 
@@ -140,8 +143,8 @@ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_google_web_client_id
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/yourusername/cinelog.git
-cd cinelog
+git clone https://github.com/PraveenPrabash/CINELOG.git
+cd CINELOG
 npm install
 ```
 
@@ -200,6 +203,10 @@ Contributions, issues, and feature requests are welcome!
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
+
+## 🔗 Repository
+
+Official GitHub Repository: [https://github.com/PraveenPrabash/CINELOG](https://github.com/PraveenPrabash/CINELOG)
 
 ## 🎬 Attribution
 
