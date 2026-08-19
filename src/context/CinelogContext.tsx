@@ -13,8 +13,8 @@ interface CinelogContextType {
   collection: WatchedItem[];
   watchlist: WatchlistItem[];
   theme: ThemePreference;
-  addWatched: (item: BaseMedia, rating: number, watchedEpisodes?: any[]) => Promise<void>;
-  updateWatched: (id: string, updates: Partial<WatchedItem>) => Promise<void>;
+  addWatched: (item: BaseMedia, rating?: number, watchedEpisodes?: WatchedEpisode[]) => Promise<void>;
+  updateWatched: (id: string, updates: { rating?: number; watchedEpisodes?: WatchedEpisode[] }) => Promise<void>;
   removeWatched: (id: string) => Promise<void>;
   addToWatchlist: (item: BaseMedia) => Promise<void>;
   removeFromWatchlist: (id: string) => Promise<void>;
@@ -89,9 +89,9 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
 
       setCollection(calculateRanks(mediaWithEpisodes as WatchedItem[]));
       setWatchlist(watchlistDocs as WatchlistItem[]);
-    } catch (error) {
-      console.error('Failed to load cloud data', error);
-      Alert.alert('Data Error', 'Failed to load your collection from the cloud.');
+    } catch (error: any) {
+      console.error('Failed to load cloud data:', error.code, error.message);
+      Alert.alert('Data Error', 'Cloud sync failed. Please try again.');
     } finally {
       setIsLoadingCloudData(false);
     }
@@ -99,8 +99,11 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
 
   const calculateRanks = (items: WatchedItem[]): WatchedItem[] => {
     const sorted = [...items].sort((a, b) => {
-      if (b.rating !== a.rating) {
-        return b.rating - a.rating;
+      const aRating = a.rating ?? 0;
+      const bRating = b.rating ?? 0;
+      
+      if (bRating !== aRating) {
+        return bRating - aRating;
       }
       return a.title.localeCompare(b.title);
     });
@@ -111,7 +114,7 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const addWatched = async (item: BaseMedia, rating: number, watchedEpisodes?: WatchedEpisode[]) => {
+  const addWatched = async (item: BaseMedia, rating?: number, watchedEpisodes?: WatchedEpisode[]) => {
     if (!user) return;
     
     const previousCollection = [...collection];
@@ -150,11 +153,11 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
       if (previousWatchlist.length !== newWatchlist.length) {
         await watchlistRepository.removeFromWatchlist(user.uid, item.id.toString());
       }
-    } catch (error) {
-      console.error('Firestore write failed', error);
+    } catch (error: any) {
+      console.error('Firestore write failed:', error.code, error.message);
       setCollection(previousCollection);
       setWatchlist(previousWatchlist);
-      Alert.alert('Error', 'Failed to save to cloud. Changes reverted.');
+      Alert.alert('Error', 'Cloud sync failed. Changes reverted.');
     }
   };
 
@@ -213,11 +216,11 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
           await watchlistRepository.removeFromWatchlist(user.uid, id);
         }
       }
-    } catch (error) {
-      console.error('Firestore update failed', error);
+    } catch (error: any) {
+      console.error('Firestore update failed:', error.code, error.message);
       setCollection(previousCollection);
       setWatchlist(previousWatchlist);
-      Alert.alert('Error', 'Failed to update in cloud. Changes reverted.');
+      Alert.alert('Error', 'Cloud sync failed. Changes reverted.');
     }
   };
 
@@ -237,10 +240,10 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
           episodeRepository.unmarkEpisodeWatched(user.uid, id, ep.seasonNumber, ep.episodeNumber)
         ));
       }
-    } catch (error) {
-      console.error('Firestore delete failed', error);
+    } catch (error: any) {
+      console.error('Firestore delete failed:', error.code, error.message);
       setCollection(previousCollection);
-      Alert.alert('Error', 'Failed to remove from cloud. Changes reverted.');
+      Alert.alert('Error', 'Cloud sync failed. Changes reverted.');
     }
   };
 
@@ -260,10 +263,10 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await watchlistRepository.addToWatchlist(user.uid, item);
-    } catch (error) {
-      console.error('Firestore write failed', error);
+    } catch (error: any) {
+      console.error('Firestore write failed:', error.code, error.message);
       setWatchlist(previousWatchlist);
-      Alert.alert('Error', 'Failed to add to Watchlist. Changes reverted.');
+      Alert.alert('Error', 'Cloud sync failed. Changes reverted.');
     }
   };
 
@@ -275,10 +278,10 @@ export function CinelogProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await watchlistRepository.removeFromWatchlist(user.uid, id);
-    } catch (error) {
-      console.error('Firestore delete failed', error);
+    } catch (error: any) {
+      console.error('Firestore delete failed:', error.code, error.message);
       setWatchlist(previousWatchlist);
-      Alert.alert('Error', 'Failed to remove from Watchlist. Changes reverted.');
+      Alert.alert('Error', 'Cloud sync failed. Changes reverted.');
     }
   };
 

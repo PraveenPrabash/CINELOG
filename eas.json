@@ -1,0 +1,29 @@
+{
+  "cli": {
+    "version": ">= 22.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDDpQ6iaBZXSCrwt1TS2UV_2YdSK5XIC6c",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "cinelog-216b7.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "cinelog-216b7",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "cinelog-216b7.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "62069872804",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:62069872804:web:3becd72acb841fc6c5ee31"
+      }
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

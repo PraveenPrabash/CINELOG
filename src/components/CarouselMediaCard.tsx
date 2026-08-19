@@ -43,11 +43,11 @@ export function CarouselMediaCard({ item, onPress, variant = 'home' }: CarouselM
           </ThemedText>
         ) : null}
         
-        {variant === 'home' && isWatched && watchedItem.rating > 0 && (
+        {variant === 'home' && isWatched && (
           <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={12} color={colors.primary} />
-            <ThemedText style={[styles.ratingText, { color: colors.primary }]}>
-              {watchedItem.rating.toFixed(1)}
+            <Ionicons name="star" size={12} color={watchedItem.rating !== undefined && watchedItem.rating > 0 ? colors.primary : colors.textSecondary} />
+            <ThemedText style={[styles.ratingText, { color: watchedItem.rating !== undefined && watchedItem.rating > 0 ? colors.primary : colors.textSecondary }]}>
+              {watchedItem.rating !== undefined && watchedItem.rating > 0 ? watchedItem.rating.toFixed(1) : 'Not rated'}
             </ThemedText>
           </View>
         )}

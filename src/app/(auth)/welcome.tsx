@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { ThemedView } from '../../components/themed-view';
+import { StyleSheet, View, TouchableOpacity, Alert, ActivityIndicator, SafeAreaView, Dimensions, StatusBar } from 'react-native';
 import { ThemedText } from '../../components/themed-text';
 import { Colors } from '../../constants/theme';
 import { useCinelog } from '../../context/CinelogContext';
 import { useAuth } from '../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const { theme } = useCinelog();
@@ -28,70 +29,129 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.content}>
-        <ThemedText style={[styles.title, { color: colors.primary }]}>CINELOG</ThemedText>
-        <ThemedText style={styles.subtitle}>Your personal movie and TV series tracker.</ThemedText>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#020D19" />
+      
+      {/* Subtle Cinematic Background Decorations */}
+      <View style={styles.backgroundWrapper}>
+        <View style={styles.filmStripDecorationLeft} />
+        <View style={styles.filmStripDecorationRight} />
       </View>
       
-      <View style={styles.actions}>
-        <TouchableOpacity 
-          style={[styles.button, { backgroundColor: '#fff' }]}
-          onPress={handleGoogleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <>
-              <Ionicons name="logo-google" size={24} color="#000" style={styles.googleIcon} />
-              <ThemedText style={styles.buttonText}>Continue with Google</ThemedText>
-            </>
-          )}
-        </TouchableOpacity>
+      <View style={styles.content}>
+        <View style={styles.headerSection}>
+          <View style={styles.logoContainer}>
+            <ThemedText style={styles.title}>CINELOG</ThemedText>
+          </View>
+          <ThemedText style={styles.subtitle}>Your personal movie and TV series tracker.</ThemedText>
+        </View>
+        
+        <View style={styles.actionsSection}>
+          <TouchableOpacity 
+            style={styles.button}
+            onPress={handleGoogleLogin}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={24} color="#000" style={styles.googleIcon} />
+                <ThemedText style={styles.buttonText}>Continue with Google</ThemedText>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    justifyContent: 'center',
+    backgroundColor: '#020D19', // Dark navy cinematic background
+  },
+  backgroundWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    opacity: 0.1, // Subtle
+    pointerEvents: 'none',
+  },
+  filmStripDecorationLeft: {
+    width: 32,
+    height: '100%',
+    borderRightWidth: 10,
+    borderRightColor: '#fff',
+    borderStyle: 'dashed', // Film strip style
+  },
+  filmStripDecorationRight: {
+    width: 32,
+    height: '100%',
+    borderLeftWidth: 10,
+    borderLeftColor: '#fff',
+    borderStyle: 'dashed', // Film strip style
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 48, // Creates space directly between subtitle and button
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   title: {
-    fontSize: 48,
+    fontSize: 42, 
     fontWeight: '900',
-    letterSpacing: 4,
-    marginBottom: 16,
+    letterSpacing: 10,
+    color: '#ECB365', // Primary brand color / Gold
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    opacity: 0.7,
+    color: '#A0AAB2',
     textAlign: 'center',
+    lineHeight: 24,
+    fontWeight: '500',
   },
-  actions: {
-    paddingBottom: 48,
+  actionsSection: {
+    width: '100%',
+    alignItems: 'center',
   },
   button: {
-    padding: 16,
-    borderRadius: 12,
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 100, // Fully rounded
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   googleIcon: {
     marginRight: 12,
   },
   buttonText: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#000000',
+    fontSize: 18,
+    fontWeight: '700',
   },
 });

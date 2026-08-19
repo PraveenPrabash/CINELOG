@@ -159,5 +159,49 @@ export const tmdb = {
       console.error("TMDB Season Details Error:", error);
       return null;
     }
+  },
+
+  async getPopularMovies(): Promise<BaseMedia[]> {
+    return this._fetchList('/movie/popular', 'movie');
+  },
+  async getPopularSeries(): Promise<BaseMedia[]> {
+    return this._fetchList('/tv/popular', 'series');
+  },
+  async getTrendingMovies(): Promise<BaseMedia[]> {
+    return this._fetchList('/trending/movie/week', 'movie');
+  },
+  async getTrendingSeries(): Promise<BaseMedia[]> {
+    return this._fetchList('/trending/tv/week', 'series');
+  },
+
+  async _fetchList(endpoint: string, expectedType: 'movie' | 'series'): Promise<BaseMedia[]> {
+    try {
+      const response = await fetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&language=en-US&page=1`);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+
+      return data.results.map((item: any) => {
+        const title = expectedType === 'movie' ? item.title : item.name;
+        const releaseDate = expectedType === 'movie' ? item.release_date : item.first_air_date;
+        const year = releaseDate ? releaseDate.split('-')[0] : 'Unknown';
+        const poster = item.poster_path ? `${IMAGE_BASE_URL}${item.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Poster';
+        
+        const genres = item.genre_ids
+          ? item.genre_ids.map((id: number) => TMDB_GENRES[id] || 'Other').filter((g: string) => g !== 'Other')
+          : [];
+
+        return {
+          id: `${expectedType === 'movie' ? 'm' : 't'}-${item.id}`,
+          title,
+          year,
+          poster,
+          type: expectedType,
+          genres,
+        } as BaseMedia;
+      });
+    } catch (error) {
+      console.error(`TMDB List Error (${endpoint}):`, error);
+      return [];
+    }
   }
 };

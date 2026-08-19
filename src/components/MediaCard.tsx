@@ -50,11 +50,11 @@ export function MediaCard({ item, onPress, variant = 'collection' }: MediaCardPr
         </ThemedText>
 
         <View style={styles.footer}>
-          {variant !== 'watchlist' && isWatched && watchedItem.rating > 0 && (
+          {variant !== 'watchlist' && isWatched && (
             <View style={styles.ratingContainer}>
-              <Ionicons name="star" size={16} color={colors.primary} />
-              <ThemedText style={[styles.ratingText, { color: colors.primary }]}>
-                {watchedItem.rating.toFixed(1)}
+              <Ionicons name="star" size={16} color={watchedItem.rating !== undefined && watchedItem.rating > 0 ? colors.primary : colors.textSecondary} />
+              <ThemedText style={[styles.ratingText, { color: watchedItem.rating !== undefined && watchedItem.rating > 0 ? colors.primary : colors.textSecondary }]}>
+                {watchedItem.rating !== undefined && watchedItem.rating > 0 ? watchedItem.rating.toFixed(1) : 'Not rated'}
               </ThemedText>
             </View>
           )}

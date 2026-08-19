@@ -38,12 +38,12 @@ function RootLayoutNav() {
   useProtectedRoute();
 
   useEffect(() => {
-    if (isCinelogLoaded && !isAuthLoading && !isLoadingCloudData) {
+    if (isCinelogLoaded && !isAuthLoading) {
       SplashScreen.hideAsync();
     }
-  }, [isCinelogLoaded, isAuthLoading, isLoadingCloudData]);
+  }, [isCinelogLoaded, isAuthLoading]);
 
-  if (!isCinelogLoaded || isAuthLoading || isLoadingCloudData) {
+  if (!isCinelogLoaded || isAuthLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#041C32' }}>
         <ActivityIndicator size="large" color="#ECB365" />

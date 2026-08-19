@@ -20,6 +20,14 @@ export default function SearchScreen() {
   const { theme } = useCinelog();
   const colors = Colors[theme === 'system' ? 'dark' : theme];
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (query.trim().length > 0) {
@@ -48,7 +56,7 @@ export default function SearchScreen() {
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Search TMDB</ThemedText>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.closeBtn}>
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>

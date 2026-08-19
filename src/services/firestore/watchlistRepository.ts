@@ -5,8 +5,9 @@ import { BaseMedia } from '../../types';
 export const watchlistRepository = {
   async addToWatchlist(uid: string, media: BaseMedia): Promise<void> {
     const ref = doc(db, `users/${uid}/watchlist`, media.id.toString());
+    const dataToSave = JSON.parse(JSON.stringify(media));
     await setDoc(ref, {
-      ...media,
+      ...dataToSave,
       addedAt: serverTimestamp(),
     });
   },

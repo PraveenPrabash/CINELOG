@@ -1,16 +1,21 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  User,
-  onAuthStateChanged, 
-  signOut,
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
+import {
   GoogleAuthProvider,
-  signInWithCredential
+  User,
+  onAuthStateChanged,
+  signInWithCredential,
+  signOut
 } from 'firebase/auth';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../services/firebase';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 
-WebBrowser.maybeCompleteAuthSession();
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+});
 
 interface AuthContextType {
   user: User | null;
@@ -25,10 +30,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
@@ -38,26 +39,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      const credential = GoogleAuthProvider.credential(id_token);
-      signInWithCredential(auth, credential).catch(err => {
-        console.error('Firebase signin error', err);
-      });
-    }
-  }, [response]);
-
   const loginWithGoogle = async () => {
     try {
-      await promptAsync();
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn() as any;
+      const idToken = response.data?.idToken || response.idToken;
+      
+      if (idToken) {
+        const credential = GoogleAuthProvider.credential(idToken);
+        await signInWithCredential(auth, credential);
+      } else {
+        throw new Error('No ID token found from Google Sign-In');
+      }
     } catch (error: any) {
-      throw error;
+      if (isErrorWithCode(error)) {
+        switch (error.code) {
+          case statusCodes.SIGN_IN_CANCELLED:
+            // user cancelled the login flow
+            break;
+          case statusCodes.IN_PROGRESS:
+            // operation (e.g. sign in) is in progress already
+            break;
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            // play services not available or outdated
+            console.error('Play services not available');
+            break;
+          default:
+            console.error('Google Sign-In Error:', error.message);
+        }
+      } else {
+        console.error('Firebase signin error', error);
+      }
     }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+      await GoogleSignin.revokeAccess();
+      await GoogleSignin.signOut();
+    } catch (error) {
+      console.error('Logout error', error);
+    }
   };
 
   return (
@@ -74,3 +97,4 @@ export function useAuth() {
   }
   return context;
 }
+

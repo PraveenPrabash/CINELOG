@@ -1,42 +1,28 @@
-import React, { useRef } from 'react';
-import { StyleSheet, View, PanResponder, Dimensions, Animated } from 'react-native';
+import React, { useState, useRef, useMemo } from 'react';
+import { StyleSheet, View, PanResponder, LayoutChangeEvent } from 'react-native';
 import { ThemedText } from './themed-text';
 import { Colors } from '../constants/theme';
 import { useCinelog } from '../context/CinelogContext';
 
 interface RatingInputProps {
-  value: number;
+  value: number | undefined;
   onChange: (value: number) => void;
 }
 
 export function RatingInput({ value, onChange }: RatingInputProps) {
   const { theme } = useCinelog();
   const colors = Colors[theme === 'system' ? 'dark' : theme];
-  
-  const SLIDER_WIDTH = Dimensions.get('window').width - 64; // 32 padding on each side
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt, gestureState) => {
-        handleScrub(evt.nativeEvent.locationX);
-      },
-      onPanResponderMove: (evt, gestureState) => {
-        // gestureState.moveX is absolute screen position. Better to use local coordinates 
-        // if possible, but moveX works if we approximate container pos, or just track diffs.
-        // For a simple custom slider, tracking dx from initial grant is easier:
-        // Actually, just calculating percentage based on the touch position within the view bounds:
-        handleScrub(evt.nativeEvent.locationX);
-      },
-      onPanResponderRelease: (evt, gestureState) => {
-        handleScrub(evt.nativeEvent.locationX);
-      },
-    })
-  ).current;
+  const [trackWidth, setTrackWidth] = useState(0);
+
+  const safeValue = value ?? 0.0;
+  // Calculate width percentage (0-100)
+  const fillWidth = (safeValue / 10) * 100;
 
   const handleScrub = (xPos: number) => {
-    let percentage = xPos / SLIDER_WIDTH;
+    if (trackWidth === 0) return;
+    
+    let percentage = xPos / trackWidth;
     if (percentage < 0) percentage = 0;
     if (percentage > 1) percentage = 1;
 
@@ -47,35 +33,65 @@ export function RatingInput({ value, onChange }: RatingInputProps) {
     onChange(newValue);
   };
 
-  const fillWidth = (value / 10) * 100;
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (evt) => {
+      handleScrub(evt.nativeEvent.locationX);
+    },
+    onPanResponderMove: (evt) => {
+      handleScrub(evt.nativeEvent.locationX);
+    },
+  }), [trackWidth]); // Recreate if trackWidth changes
 
   return (
     <View style={styles.container}>
-      <ThemedText style={[styles.label, { color: colors.textSecondary }]}>MY RATING</ThemedText>
       
       <View style={styles.valueContainer}>
-        <ThemedText style={[styles.valueText, { color: colors.primary }]}>
-          {value.toFixed(1)}
-        </ThemedText>
+        {value !== undefined ? (
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+            <ThemedText style={[styles.valueText, { color: colors.primary }]}>
+              {value.toFixed(1)}
+            </ThemedText>
+            <ThemedText style={[styles.valueSuffix, { color: colors.textSecondary }]}>
+              / 10
+            </ThemedText>
+          </View>
+        ) : (
+          <ThemedText style={[styles.valueText, { color: colors.textSecondary, fontSize: 32 }]}>
+            Not rated
+          </ThemedText>
+        )}
       </View>
 
-      <View style={styles.sliderContainer} {...panResponder.panHandlers}>
-        <View style={[styles.track, { backgroundColor: colors.backgroundElement }]}>
-          <View style={[styles.fill, { width: `${fillWidth}%`, backgroundColor: colors.primary }]} />
+      <View style={styles.sliderWrapper}>
+        <View 
+          style={styles.sliderInteractiveArea} 
+          {...panResponder.panHandlers}
+          onLayout={(e: LayoutChangeEvent) => setTrackWidth(e.nativeEvent.layout.width)}
+        >
+          <View style={[styles.track, { backgroundColor: colors.backgroundElement }]}>
+            <View style={[styles.fill, { width: `${fillWidth}%`, backgroundColor: colors.primary }]} />
+          </View>
+          
+          <View 
+            pointerEvents="none"
+            style={[
+              styles.thumb, 
+              { 
+                left: `${fillWidth}%`, 
+                backgroundColor: colors.card,
+                borderColor: colors.primary
+              }
+            ]} 
+          />
         </View>
-        <View style={[
-          styles.thumb, 
-          { 
-            left: `${fillWidth}%`, 
-            backgroundColor: colors.card,
-            borderColor: colors.primary
-          }
-        ]} />
+        <View style={styles.scaleLabels}>
+          <ThemedText style={[styles.scaleText, { color: colors.textSecondary }]}>0</ThemedText>
+          <ThemedText style={[styles.scaleText, { color: colors.textSecondary }]}>10</ThemedText>
+        </View>
       </View>
-      <View style={styles.scaleLabels}>
-        <ThemedText style={[styles.scaleText, { color: colors.textSecondary }]}>0.0</ThemedText>
-        <ThemedText style={[styles.scaleText, { color: colors.textSecondary }]}>10.0</ThemedText>
-      </View>
+
     </View>
   );
 }
@@ -84,34 +100,39 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     alignItems: 'center',
-    marginVertical: 16,
-    paddingHorizontal: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   valueContainer: {
-    height: 80,
+    minHeight: 90, // Replaced fixed height with minHeight
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
+    paddingVertical: 4,
   },
   valueText: {
     fontSize: 64,
-    lineHeight: 72,
+    lineHeight: 76, // Added lineHeight to prevent vertical clipping
     fontWeight: '900',
     fontVariant: ['tabular-nums'],
     includeFontPadding: false,
   },
-  sliderContainer: {
+  valueSuffix: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    opacity: 0.8,
+  },
+  sliderWrapper: {
+    width: '100%',
+    paddingHorizontal: 8,
+    marginBottom: 8,
+  },
+  sliderInteractiveArea: {
     width: '100%',
     height: 48,
     justifyContent: 'center',
   },
   track: {
+    width: '100%',
     height: 6,
     borderRadius: 3,
     overflow: 'hidden',
@@ -125,7 +146,7 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     borderWidth: 3,
-    marginLeft: -14, // center thumb over value
+    marginLeft: -14, // Center thumb perfectly over percentage
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -135,9 +156,8 @@ const styles = StyleSheet.create({
   scaleLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 4,
-    paddingBottom: 8,
+    paddingHorizontal: 2,
+    marginTop: -4,
   },
   scaleText: {
     fontSize: 14,

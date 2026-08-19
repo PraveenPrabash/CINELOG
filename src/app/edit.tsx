@@ -5,6 +5,7 @@ import { useCinelog } from '../context/CinelogContext';
 import { ThemedView } from '../components/themed-view';
 import { ThemedText } from '../components/themed-text';
 import { RatingInput } from '../components/RatingInput';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import { Colors } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { BaseMedia, WatchedEpisode, TMDBSeason } from '../types';
@@ -24,7 +25,7 @@ export default function EditScreen() {
   
   const [mediaBase, setMediaBase] = useState<BaseMedia | null>(existingItem || null);
   const [isLoading, setIsLoading] = useState(!!isNew && !existingItem);
-  const [rating, setRating] = useState<number>(existingCollectionItem ? existingCollectionItem.rating : 0.0);
+  const [rating, setRating] = useState<number | undefined>(existingCollectionItem ? existingCollectionItem.rating : undefined);
   
   const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
   const [seasonEpisodes, setSeasonEpisodes] = useState<Record<number, any[]>>({});
@@ -34,18 +35,35 @@ export default function EditScreen() {
     existingCollectionItem?.watchedEpisodes || []
   );
 
+  const [showWatchlistModal, setShowWatchlistModal] = useState(false);
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   useEffect(() => {
-    if (existingItem) return;
-    
-    if (isNew === 'true') {
+    // If we have existing item but missing full details (like overview), fetch them.
+    // Otherwise, if it's completely new, fetch them.
+    const needsFetch = !mediaBase || !mediaBase.overview || isNew === 'true';
+
+    if (needsFetch) {
       setIsLoading(true);
       tmdb.getDetails(id).then(data => {
-        if (data) setMediaBase(data);
-        else router.back();
+        if (data) {
+          setMediaBase(prev => ({
+            ...prev,
+            ...data
+          }));
+        } else if (!mediaBase) {
+          handleBack();
+        }
         setIsLoading(false);
       });
-    } else if (!mediaBase) {
-      router.back();
     }
   }, [id, isNew]);
 
@@ -97,32 +115,26 @@ export default function EditScreen() {
     } else {
       await addWatched(mediaBase, rating, watchedEpisodes);
     }
-    router.back();
+    handleBack();
   };
 
   const handleAddWatchlist = async () => {
     if (!existingWatchlistItem) {
       await addToWatchlist(mediaBase);
     }
-    router.back();
+    handleBack();
   };
 
-  const handleRemoveFromWatchlist = () => {
-    Alert.alert(
-      "Remove from Watchlist",
-      "Are you sure you want to remove this from your watchlist?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Remove", 
-          style: "destructive",
-          onPress: async () => {
-            await removeFromWatchlist(id);
-            if (!existingCollectionItem) router.back();
-          }
-        }
-      ]
-    );
+  const handleRemoveFromWatchlistConfirm = async () => {
+    setShowWatchlistModal(false);
+    await removeFromWatchlist(id);
+    if (!existingCollectionItem) handleBack();
+  };
+
+  const handleRemoveCollectionConfirm = async () => {
+    setShowCollectionModal(false);
+    if (existingCollectionItem) await removeWatched(id);
+    handleBack();
   };
 
   const formatRuntime = (mins?: number) => {
@@ -202,7 +214,7 @@ export default function EditScreen() {
         {existingWatchlistItem && (
           <TouchableOpacity 
             style={[styles.watchlistBtn, { backgroundColor: colors.card, borderColor: colors.backgroundElement, borderWidth: 1 }]} 
-            onPress={handleRemoveFromWatchlist}
+            onPress={() => setShowWatchlistModal(true)}
           >
             <Ionicons name="trash-outline" size={20} color="#ff3b30" />
             <ThemedText style={[styles.watchlistBtnText, { color: '#ff3b30' }]}>
@@ -303,7 +315,6 @@ export default function EditScreen() {
         )}
 
         <View style={styles.ratingSection}>
-          <ThemedText style={[styles.tmdbLabel, { marginBottom: 16, fontSize: 14 }]}>MY RATING</ThemedText>
           <RatingInput value={rating} onChange={setRating} />
           
           <TouchableOpacity 
@@ -319,12 +330,7 @@ export default function EditScreen() {
         {existingItem && (
           <TouchableOpacity 
             style={styles.deleteBtn} 
-            onPress={() => {
-               if (existingCollectionItem) removeWatched(id);
-               if (existingCollectionItem) {
-                 router.back();
-               }
-            }}
+            onPress={() => setShowCollectionModal(true)}
           >
             <ThemedText style={styles.deleteBtnText}>
               {existingCollectionItem ? "Remove from Collection" : ""}
@@ -333,9 +339,25 @@ export default function EditScreen() {
         )}
       </ScrollView>
 
-      <TouchableOpacity onPress={() => router.back()} style={[styles.closeBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+      <TouchableOpacity onPress={handleBack} style={[styles.closeBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
         <Ionicons name="close" size={24} color="#FFF" />
       </TouchableOpacity>
+
+      <ConfirmationModal
+        visible={showWatchlistModal}
+        title="Remove from Watchlist?"
+        description="This title will be removed from your watchlist."
+        onConfirm={handleRemoveFromWatchlistConfirm}
+        onCancel={() => setShowWatchlistModal(false)}
+      />
+
+      <ConfirmationModal
+        visible={showCollectionModal}
+        title="Remove from Collection?"
+        description="This title will be permanently removed from your watched collection."
+        onConfirm={handleRemoveCollectionConfirm}
+        onCancel={() => setShowCollectionModal(false)}
+      />
     </ThemedView>
   );
 }

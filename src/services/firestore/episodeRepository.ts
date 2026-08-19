@@ -7,9 +7,9 @@ export const episodeRepository = {
     // Generate a unique ID for the episode record
     const episodeDocId = `${mediaId}_S${episode.seasonNumber}E${episode.episodeNumber}`;
     const ref = doc(db, `users/${uid}/episodes`, episodeDocId);
+    const dataToSave = JSON.parse(JSON.stringify({ ...episode, mediaId }));
     await setDoc(ref, {
-      ...episode,
-      mediaId,
+      ...dataToSave,
       addedAt: serverTimestamp(),
     });
   },
